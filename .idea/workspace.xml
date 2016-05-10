@@ -48,7 +48,7 @@
         <entry file="file://$PROJECT_DIR$/src/main/java/cn/jpush/WebIMBootstrap.java">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.6507937">
-              <caret line="162" column="30" selection-start-line="162" selection-start-column="30" selection-end-line="162" selection-end-column="30" />
+              <caret line="165" column="0" selection-start-line="165" selection-start-column="0" selection-end-line="165" selection-end-column="0" />
               <folding>
                 <element signature="class#1698:2836" expanded="false" />
                 <element signature="e#7482#7483#0" expanded="true" />
@@ -747,12 +747,12 @@
       <workItem from="1462451056219" duration="8330000" />
       <workItem from="1462684773563" duration="7928000" />
       <workItem from="1462710263280" duration="35801000" />
-      <workItem from="1462813066574" duration="12292000" />
+      <workItem from="1462813066574" duration="12501000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="82666000" />
+    <option name="totallyTimeSpent" value="82875000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="-1" y="0" width="1368" height="740" extended-state="6" />
@@ -1309,7 +1309,7 @@
     <entry file="file://$PROJECT_DIR$/src/main/java/cn/jpush/WebIMBootstrap.java">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.6507937">
-          <caret line="162" column="30" selection-start-line="162" selection-start-column="30" selection-end-line="162" selection-end-column="30" />
+          <caret line="165" column="0" selection-start-line="165" selection-start-column="0" selection-end-line="165" selection-end-column="0" />
           <folding>
             <element signature="class#1698:2836" expanded="false" />
             <element signature="e#7482#7483#0" expanded="true" />
