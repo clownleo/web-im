@@ -1,0 +1,140 @@
+2016-05-10 19:45:03  [ main:0 ] - [ DEBUG ]  Using SLF4J as the default logging framework
+2016-05-10 19:45:03  [ main:18 ] - [ DEBUG ]  java.nio.Buffer.address: available
+2016-05-10 19:45:03  [ main:21 ] - [ DEBUG ]  sun.misc.Unsafe.theUnsafe: available
+2016-05-10 19:45:03  [ main:22 ] - [ DEBUG ]  sun.misc.Unsafe.copyMemory: available
+2016-05-10 19:45:03  [ main:23 ] - [ DEBUG ]  java.nio.Bits.unaligned: true
+2016-05-10 19:45:03  [ main:25 ] - [ DEBUG ]  Java version: 8
+2016-05-10 19:45:03  [ main:25 ] - [ DEBUG ]  -Dio.netty.noUnsafe: false
+2016-05-10 19:45:03  [ main:26 ] - [ DEBUG ]  sun.misc.Unsafe: available
+2016-05-10 19:45:03  [ main:26 ] - [ DEBUG ]  -Dio.netty.noJavassist: false
+2016-05-10 19:45:03  [ main:39 ] - [ DEBUG ]  Javassist: unavailable
+2016-05-10 19:45:03  [ main:40 ] - [ DEBUG ]  You don't have Javassist in your class path or you don't have enough permission to load dynamically generated classes.  Please check the configuration for better performance.
+2016-05-10 19:45:03  [ main:40 ] - [ DEBUG ]  -Dio.netty.tmpdir: /tmp (java.io.tmpdir)
+2016-05-10 19:45:03  [ main:41 ] - [ DEBUG ]  -Dio.netty.bitMode: 64 (sun.arch.data.model)
+2016-05-10 19:45:03  [ main:43 ] - [ DEBUG ]  -Dio.netty.noPreferDirect: false
+2016-05-10 19:45:03  [ main:49 ] - [ DEBUG ]  -Dio.netty.leakDetection.level: simple
+2016-05-10 19:45:03  [ main:49 ] - [ DEBUG ]  -Dio.netty.leakDetection.maxRecords: 4
+2016-05-10 19:45:03  [ main:459 ] - [ DEBUG ]  -Dio.netty.allocator.numHeapArenas: 4
+2016-05-10 19:45:03  [ main:460 ] - [ DEBUG ]  -Dio.netty.allocator.numDirectArenas: 4
+2016-05-10 19:45:03  [ main:460 ] - [ DEBUG ]  -Dio.netty.allocator.pageSize: 8192
+2016-05-10 19:45:03  [ main:460 ] - [ DEBUG ]  -Dio.netty.allocator.maxOrder: 11
+2016-05-10 19:45:03  [ main:462 ] - [ DEBUG ]  -Dio.netty.allocator.chunkSize: 16777216
+2016-05-10 19:45:03  [ main:462 ] - [ DEBUG ]  -Dio.netty.allocator.tinyCacheSize: 512
+2016-05-10 19:45:03  [ main:462 ] - [ DEBUG ]  -Dio.netty.allocator.smallCacheSize: 256
+2016-05-10 19:45:03  [ main:462 ] - [ DEBUG ]  -Dio.netty.allocator.normalCacheSize: 64
+2016-05-10 19:45:03  [ main:463 ] - [ DEBUG ]  -Dio.netty.allocator.maxCachedBufferCapacity: 32768
+2016-05-10 19:45:03  [ main:463 ] - [ DEBUG ]  -Dio.netty.allocator.cacheTrimInterval: 8192
+2016-05-10 19:45:03  [ main:525 ] - [ DEBUG ]  -Dio.netty.eventLoopThreads: 4
+2016-05-10 19:45:03  [ main:662 ] - [ DEBUG ]  -Dio.netty.eventLoopThreads: 8
+2016-05-10 19:45:03  [ main:680 ] - [ DEBUG ]  -Dio.netty.noKeySetOptimization: false
+2016-05-10 19:45:03  [ main:681 ] - [ DEBUG ]  -Dio.netty.selectorAutoRebuildThreshold: 512
+2016-05-10 19:45:03  [ main:686 ] - [ DEBUG ]  Adding reference to io.netty.channel.nio.NioEventLoopGroup@657c8ad9, existing ref count 0
+2016-05-10 19:45:03  [ main:700 ] - [ DEBUG ]  Connecting to Redis, address: localhost/127.0.0.1:6379
+2016-05-10 19:45:03  [ main:794 ] - [ DEBUG ]  -Dio.netty.initialSeedUniquifier: 0x9da839bc2889edb6 (took 37 ms)
+2016-05-10 19:45:03  [ main:830 ] - [ DEBUG ]  -Dio.netty.allocator.type: unpooled
+2016-05-10 19:45:03  [ main:831 ] - [ DEBUG ]  -Dio.netty.threadLocalDirectBufferSize: 65536
+2016-05-10 19:45:03  [ lettuce-nioEventLoop-3-1:902 ] - [ DEBUG ]  -Dio.netty.recycler.maxCapacity.default: 262144
+2016-05-10 19:45:04  [ lettuce-nioEventLoop-3-1:923 ] - [ DEBUG ]  [unknown] channelActive(io.netty.channel.DefaultChannelHandlerContext@20c275b8)
+2016-05-10 19:45:04  [ lettuce-nioEventLoop-3-1:924 ] - [ DEBUG ]  [/127.0.0.1:44124 -> localhost/127.0.0.1:6379] channelActive()
+2016-05-10 19:45:04  [ lettuce-nioEventLoop-3-1:924 ] - [ DEBUG ]  [/127.0.0.1:44124 -> localhost/127.0.0.1:6379] executeQueuedCommands 0 command(s) queued
+2016-05-10 19:45:04  [ lettuce-nioEventLoop-3-1:927 ] - [ DEBUG ]  [/127.0.0.1:44124 -> localhost/127.0.0.1:6379] activating channel handler
+2016-05-10 19:45:04  [ lettuce-nioEventLoop-3-1:939 ] - [ DEBUG ]  [/127.0.0.1:44124 -> localhost/127.0.0.1:6379] channelActive() done
+2016-05-10 19:45:04  [ lettuce-nioEventLoop-3-1:957 ] - [ DEBUG ]  [unknown] userEventTriggered(io.netty.channel.DefaultChannelHandlerContext@20c275b8, com.lambdaworks.redis.ConnectionEvents$Activated@72582f38)
+2016-05-10 19:45:04  [ main:994 ] - [ INFO ]  Session store / pubsub factory used: MemoryStoreFactory (local session store only)
+2016-05-10 19:45:04  [ main:1128 ] - [ DEBUG ]  Loopback interface: lo (lo, 0:0:0:0:0:0:0:1%lo)
+2016-05-10 19:45:04  [ main:1130 ] - [ DEBUG ]  /proc/sys/net/core/somaxconn: 128
+2016-05-10 19:45:04  [ nioEventLoopGroup-5-1:1150 ] - [ ERROR ]  SocketIO server start failed at port: 9090!
+2016-05-10 19:45:08  [ Timer-0:4964 ] - [ DEBUG ]  当前总共线程数10
+2016-05-10 19:45:14  [ main:0 ] - [ DEBUG ]  Using SLF4J as the default logging framework
+2016-05-10 19:45:14  [ main:16 ] - [ DEBUG ]  java.nio.Buffer.address: available
+2016-05-10 19:45:14  [ main:19 ] - [ DEBUG ]  sun.misc.Unsafe.theUnsafe: available
+2016-05-10 19:45:14  [ main:20 ] - [ DEBUG ]  sun.misc.Unsafe.copyMemory: available
+2016-05-10 19:45:14  [ main:21 ] - [ DEBUG ]  java.nio.Bits.unaligned: true
+2016-05-10 19:45:14  [ main:23 ] - [ DEBUG ]  Java version: 8
+2016-05-10 19:45:14  [ main:23 ] - [ DEBUG ]  -Dio.netty.noUnsafe: false
+2016-05-10 19:45:14  [ main:24 ] - [ DEBUG ]  sun.misc.Unsafe: available
+2016-05-10 19:45:14  [ main:24 ] - [ DEBUG ]  -Dio.netty.noJavassist: false
+2016-05-10 19:45:14  [ main:26 ] - [ DEBUG ]  Javassist: unavailable
+2016-05-10 19:45:14  [ main:26 ] - [ DEBUG ]  You don't have Javassist in your class path or you don't have enough permission to load dynamically generated classes.  Please check the configuration for better performance.
+2016-05-10 19:45:14  [ main:27 ] - [ DEBUG ]  -Dio.netty.tmpdir: /tmp (java.io.tmpdir)
+2016-05-10 19:45:14  [ main:27 ] - [ DEBUG ]  -Dio.netty.bitMode: 64 (sun.arch.data.model)
+2016-05-10 19:45:14  [ main:29 ] - [ DEBUG ]  -Dio.netty.noPreferDirect: false
+2016-05-10 19:45:14  [ main:42 ] - [ DEBUG ]  -Dio.netty.leakDetection.level: simple
+2016-05-10 19:45:14  [ main:42 ] - [ DEBUG ]  -Dio.netty.leakDetection.maxRecords: 4
+2016-05-10 19:45:15  [ main:328 ] - [ DEBUG ]  -Dio.netty.allocator.numHeapArenas: 4
+2016-05-10 19:45:15  [ main:329 ] - [ DEBUG ]  -Dio.netty.allocator.numDirectArenas: 4
+2016-05-10 19:45:15  [ main:329 ] - [ DEBUG ]  -Dio.netty.allocator.pageSize: 8192
+2016-05-10 19:45:15  [ main:329 ] - [ DEBUG ]  -Dio.netty.allocator.maxOrder: 11
+2016-05-10 19:45:15  [ main:329 ] - [ DEBUG ]  -Dio.netty.allocator.chunkSize: 16777216
+2016-05-10 19:45:15  [ main:329 ] - [ DEBUG ]  -Dio.netty.allocator.tinyCacheSize: 512
+2016-05-10 19:45:15  [ main:329 ] - [ DEBUG ]  -Dio.netty.allocator.smallCacheSize: 256
+2016-05-10 19:45:15  [ main:329 ] - [ DEBUG ]  -Dio.netty.allocator.normalCacheSize: 64
+2016-05-10 19:45:15  [ main:329 ] - [ DEBUG ]  -Dio.netty.allocator.maxCachedBufferCapacity: 32768
+2016-05-10 19:45:15  [ main:330 ] - [ DEBUG ]  -Dio.netty.allocator.cacheTrimInterval: 8192
+2016-05-10 19:45:15  [ main:355 ] - [ DEBUG ]  -Dio.netty.eventLoopThreads: 4
+2016-05-10 19:45:15  [ main:458 ] - [ DEBUG ]  -Dio.netty.eventLoopThreads: 8
+2016-05-10 19:45:15  [ main:463 ] - [ DEBUG ]  -Dio.netty.noKeySetOptimization: false
+2016-05-10 19:45:15  [ main:464 ] - [ DEBUG ]  -Dio.netty.selectorAutoRebuildThreshold: 512
+2016-05-10 19:45:15  [ main:467 ] - [ DEBUG ]  Adding reference to io.netty.channel.nio.NioEventLoopGroup@657c8ad9, existing ref count 0
+2016-05-10 19:45:15  [ main:477 ] - [ DEBUG ]  Connecting to Redis, address: localhost/127.0.0.1:6379
+2016-05-10 19:45:15  [ main:512 ] - [ DEBUG ]  -Dio.netty.initialSeedUniquifier: 0x469d6912cd5e7a49 (took 7 ms)
+2016-05-10 19:45:15  [ main:526 ] - [ DEBUG ]  -Dio.netty.allocator.type: unpooled
+2016-05-10 19:45:15  [ main:527 ] - [ DEBUG ]  -Dio.netty.threadLocalDirectBufferSize: 65536
+2016-05-10 19:45:15  [ lettuce-nioEventLoop-3-1:551 ] - [ DEBUG ]  -Dio.netty.recycler.maxCapacity.default: 262144
+2016-05-10 19:45:15  [ lettuce-nioEventLoop-3-1:564 ] - [ DEBUG ]  [unknown] channelActive(io.netty.channel.DefaultChannelHandlerContext@7d2a12ac)
+2016-05-10 19:45:15  [ lettuce-nioEventLoop-3-1:564 ] - [ DEBUG ]  [/127.0.0.1:44129 -> localhost/127.0.0.1:6379] channelActive()
+2016-05-10 19:45:15  [ lettuce-nioEventLoop-3-1:565 ] - [ DEBUG ]  [/127.0.0.1:44129 -> localhost/127.0.0.1:6379] executeQueuedCommands 0 command(s) queued
+2016-05-10 19:45:15  [ lettuce-nioEventLoop-3-1:565 ] - [ DEBUG ]  [/127.0.0.1:44129 -> localhost/127.0.0.1:6379] activating channel handler
+2016-05-10 19:45:15  [ lettuce-nioEventLoop-3-1:574 ] - [ DEBUG ]  [/127.0.0.1:44129 -> localhost/127.0.0.1:6379] channelActive() done
+2016-05-10 19:45:15  [ lettuce-nioEventLoop-3-1:581 ] - [ DEBUG ]  [unknown] userEventTriggered(io.netty.channel.DefaultChannelHandlerContext@7d2a12ac, com.lambdaworks.redis.ConnectionEvents$Activated@5f810dc1)
+2016-05-10 19:45:15  [ main:593 ] - [ INFO ]  Session store / pubsub factory used: MemoryStoreFactory (local session store only)
+2016-05-10 19:45:15  [ main:666 ] - [ DEBUG ]  Loopback interface: lo (lo, 0:0:0:0:0:0:0:1%lo)
+2016-05-10 19:45:15  [ main:667 ] - [ DEBUG ]  /proc/sys/net/core/somaxconn: 128
+2016-05-10 19:45:15  [ nioEventLoopGroup-5-1:672 ] - [ ERROR ]  SocketIO server start failed at port: 9090!
+2016-05-10 19:45:23  [ main:0 ] - [ DEBUG ]  Using SLF4J as the default logging framework
+2016-05-10 19:45:23  [ main:26 ] - [ DEBUG ]  java.nio.Buffer.address: available
+2016-05-10 19:45:23  [ main:32 ] - [ DEBUG ]  sun.misc.Unsafe.theUnsafe: available
+2016-05-10 19:45:23  [ main:33 ] - [ DEBUG ]  sun.misc.Unsafe.copyMemory: available
+2016-05-10 19:45:23  [ main:37 ] - [ DEBUG ]  java.nio.Bits.unaligned: true
+2016-05-10 19:45:24  [ main:41 ] - [ DEBUG ]  Java version: 8
+2016-05-10 19:45:24  [ main:42 ] - [ DEBUG ]  -Dio.netty.noUnsafe: false
+2016-05-10 19:45:24  [ main:49 ] - [ DEBUG ]  sun.misc.Unsafe: available
+2016-05-10 19:45:24  [ main:50 ] - [ DEBUG ]  -Dio.netty.noJavassist: false
+2016-05-10 19:45:24  [ main:55 ] - [ DEBUG ]  Javassist: unavailable
+2016-05-10 19:45:24  [ main:55 ] - [ DEBUG ]  You don't have Javassist in your class path or you don't have enough permission to load dynamically generated classes.  Please check the configuration for better performance.
+2016-05-10 19:45:24  [ main:58 ] - [ DEBUG ]  -Dio.netty.tmpdir: /tmp (java.io.tmpdir)
+2016-05-10 19:45:24  [ main:62 ] - [ DEBUG ]  -Dio.netty.bitMode: 64 (sun.arch.data.model)
+2016-05-10 19:45:24  [ main:62 ] - [ DEBUG ]  -Dio.netty.noPreferDirect: false
+2016-05-10 19:45:24  [ main:66 ] - [ DEBUG ]  -Dio.netty.leakDetection.level: simple
+2016-05-10 19:45:24  [ main:68 ] - [ DEBUG ]  -Dio.netty.leakDetection.maxRecords: 4
+2016-05-10 19:45:24  [ main:324 ] - [ DEBUG ]  -Dio.netty.allocator.numHeapArenas: 4
+2016-05-10 19:45:24  [ main:324 ] - [ DEBUG ]  -Dio.netty.allocator.numDirectArenas: 4
+2016-05-10 19:45:24  [ main:325 ] - [ DEBUG ]  -Dio.netty.allocator.pageSize: 8192
+2016-05-10 19:45:24  [ main:325 ] - [ DEBUG ]  -Dio.netty.allocator.maxOrder: 11
+2016-05-10 19:45:24  [ main:325 ] - [ DEBUG ]  -Dio.netty.allocator.chunkSize: 16777216
+2016-05-10 19:45:24  [ main:325 ] - [ DEBUG ]  -Dio.netty.allocator.tinyCacheSize: 512
+2016-05-10 19:45:24  [ main:326 ] - [ DEBUG ]  -Dio.netty.allocator.smallCacheSize: 256
+2016-05-10 19:45:24  [ main:326 ] - [ DEBUG ]  -Dio.netty.allocator.normalCacheSize: 64
+2016-05-10 19:45:24  [ main:326 ] - [ DEBUG ]  -Dio.netty.allocator.maxCachedBufferCapacity: 32768
+2016-05-10 19:45:24  [ main:326 ] - [ DEBUG ]  -Dio.netty.allocator.cacheTrimInterval: 8192
+2016-05-10 19:45:24  [ main:351 ] - [ DEBUG ]  -Dio.netty.eventLoopThreads: 4
+2016-05-10 19:45:24  [ main:446 ] - [ DEBUG ]  -Dio.netty.eventLoopThreads: 8
+2016-05-10 19:45:24  [ main:449 ] - [ DEBUG ]  -Dio.netty.noKeySetOptimization: false
+2016-05-10 19:45:24  [ main:450 ] - [ DEBUG ]  -Dio.netty.selectorAutoRebuildThreshold: 512
+2016-05-10 19:45:24  [ main:453 ] - [ DEBUG ]  Adding reference to io.netty.channel.nio.NioEventLoopGroup@657c8ad9, existing ref count 0
+2016-05-10 19:45:24  [ main:463 ] - [ DEBUG ]  Connecting to Redis, address: localhost/127.0.0.1:6379
+2016-05-10 19:45:24  [ main:503 ] - [ DEBUG ]  -Dio.netty.initialSeedUniquifier: 0x2e9f2c648a4c325c (took 9 ms)
+2016-05-10 19:45:24  [ main:518 ] - [ DEBUG ]  -Dio.netty.allocator.type: unpooled
+2016-05-10 19:45:24  [ main:518 ] - [ DEBUG ]  -Dio.netty.threadLocalDirectBufferSize: 65536
+2016-05-10 19:45:24  [ lettuce-nioEventLoop-3-1:542 ] - [ DEBUG ]  -Dio.netty.recycler.maxCapacity.default: 262144
+2016-05-10 19:45:24  [ lettuce-nioEventLoop-3-1:553 ] - [ DEBUG ]  [unknown] channelActive(io.netty.channel.DefaultChannelHandlerContext@4f225ca2)
+2016-05-10 19:45:24  [ lettuce-nioEventLoop-3-1:554 ] - [ DEBUG ]  [/127.0.0.1:44133 -> localhost/127.0.0.1:6379] channelActive()
+2016-05-10 19:45:24  [ lettuce-nioEventLoop-3-1:554 ] - [ DEBUG ]  [/127.0.0.1:44133 -> localhost/127.0.0.1:6379] executeQueuedCommands 0 command(s) queued
+2016-05-10 19:45:24  [ lettuce-nioEventLoop-3-1:554 ] - [ DEBUG ]  [/127.0.0.1:44133 -> localhost/127.0.0.1:6379] activating channel handler
+2016-05-10 19:45:24  [ lettuce-nioEventLoop-3-1:562 ] - [ DEBUG ]  [/127.0.0.1:44133 -> localhost/127.0.0.1:6379] channelActive() done
+2016-05-10 19:45:24  [ lettuce-nioEventLoop-3-1:567 ] - [ DEBUG ]  [unknown] userEventTriggered(io.netty.channel.DefaultChannelHandlerContext@4f225ca2, com.lambdaworks.redis.ConnectionEvents$Activated@4f89228a)
+2016-05-10 19:45:24  [ main:582 ] - [ INFO ]  Session store / pubsub factory used: MemoryStoreFactory (local session store only)
+2016-05-10 19:45:24  [ main:731 ] - [ DEBUG ]  Loopback interface: lo (lo, 0:0:0:0:0:0:0:1%lo)
+2016-05-10 19:45:24  [ main:732 ] - [ DEBUG ]  /proc/sys/net/core/somaxconn: 128
+2016-05-10 19:45:24  [ nioEventLoopGroup-5-1:738 ] - [ ERROR ]  SocketIO server start failed at port: 9090!
+2016-05-10 19:45:41  [ nioEventLoopGroup-5-1:1 ] - [ ERROR ]  SocketIO server start failed at port: 9090!

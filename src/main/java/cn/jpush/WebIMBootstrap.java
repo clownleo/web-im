@@ -182,6 +182,7 @@ public class WebIMBootstrap {
 
     public void run() {
         socketIOServer.start();
+        Runtime.getRuntime().addShutdownHook(new Thread(socketIOServer::stop));
         System.err.println("Web-IM Service start...");
     }
 
