@@ -1,7 +1,6 @@
 package cn.jpush.commons.utils.properties;
 import org.apache.commons.lang3.StringUtils;
 
-import javax.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -247,11 +246,6 @@ public class PropertiesWrapper {
      */
     public static <T> void registConverter(Class<T> clazz, Converter<T> converter) {
         converters.put(clazz, converter);
-    }
-
-
-    public void func(HttpServletRequest req) {
-
     }
 
     public static void main(String[] args) {

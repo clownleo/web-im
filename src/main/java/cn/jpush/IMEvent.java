@@ -1,12 +1,16 @@
+package cn.jpush;
 /**
  * Web-IM Protocol Event
  * Created by leo on 16/1/25.
  */
 public class IMEvent {
-    public static final String ACK = "ack";
-    public static final String CHANNEL_INIT = "c_init";
-    public static final String LOGIN = "login";
-    public static final String LOGOUT = "logout";
+    public static final String
+            LOGIN = "login",
+            LOGOUT = "logout",
+            REGISTER = "register",
+            GET_KET_ENCRYPTED="get_key_encrypted",
+            GET_KET_ENCRYPTED_bck="get_key_encrypted_bck";
+
     public static final String GET_USER_INFO = "get_user_info";
     public static final String SEND_SINGLE_TEXT = "s_single_text";
     public static final String MSG_SYNC = "msg_sync";

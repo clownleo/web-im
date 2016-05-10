@@ -1,10 +1,7 @@
 package cn.jpush.commons.utils.http;
 
 import com.alibaba.fastjson.JSON;
-import org.apache.avro.data.Json;
-import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.collections.BeanMap;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHeaders;
