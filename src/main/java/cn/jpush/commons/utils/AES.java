@@ -19,6 +19,7 @@ import java.util.stream.Stream;
 public class AES {
 
     private static Cipher cipher;
+    private static IvParameterSpec iv = new IvParameterSpec("0102030405060708".getBytes());
 
     static {
         try {
@@ -39,7 +40,6 @@ public class AES {
             }
             byte[] raw = sKey.getBytes();
             SecretKeySpec skeySpec = new SecretKeySpec(raw, "AES");
-            IvParameterSpec iv = new IvParameterSpec("0102030405060708".getBytes());//使用CBC模式，需要一个向量iv，可增加加密算法的强度
             cipher.init(Cipher.ENCRYPT_MODE, skeySpec, iv);
             byte[] encrypted = cipher.doFinal(sSrc.getBytes());
 
@@ -58,8 +58,6 @@ public class AES {
                 throw new RuntimeException("skey must be 16 bytes");
             }
             SecretKeySpec skeySpec = new SecretKeySpec(raw, "AES");
-            IvParameterSpec iv = new IvParameterSpec("0102030405060708"
-                    .getBytes());
             cipher.init(Cipher.DECRYPT_MODE, skeySpec, iv);
             byte[] encrypted1 = Base64.decodeBase64(sSrc);//先用bAES64解密
             byte[] original = cipher.doFinal(encrypted1);
@@ -78,6 +76,7 @@ public class AES {
     }
 
     public static void main(String[] args) {
-        System.out.println("123".equals(null));
+        System.out.println(Encrypt("你好", "你不好"));
+        System.out.println(Decrypt("ef1uy4NcndwnVV9Y+oS/sw==", "你不好"));
     }
 }
