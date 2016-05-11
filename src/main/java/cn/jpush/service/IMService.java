@@ -16,7 +16,9 @@ import rx.Observable;
 import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Timer;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
@@ -114,10 +116,7 @@ public class IMService {
         return redis.hset("user:" + client.<String>get("username"), "info", JSON.toJSONString(bean.info));
     }
 
-    public Observable<Boolean> sendMessage(SocketIOClient client, MessageBean bean) {
-        if (client.<String>get("username") != null && userOnline.containsKey(client.<String>get("username")))
-            return Observable.create(subscriber -> subscriber.onError(IMError.UNLOGIN));
-        bean.fromUser = client.<String>get("username");
+    public Observable<Boolean> sendMessage(MessageBean bean) {
         bean.dateTime = new Date();
         return redis.exists("user:" + bean.toUser)
                 .map(aLong -> aLong > 0)
@@ -160,7 +159,7 @@ public class IMService {
         return redis.srem(bean.toUser + ":addFriend", username)
                 .compose(Dao.suportNull(IMError.INVALI_REQUEST))
                 .doOnNext(aLong1 -> {
-                    if(aLong1 <= 0)
+                    if (aLong1 <= 0)
                         throw IMError.INVALI_REQUEST;
                 })
                 .flatMap(aLong1 -> {
@@ -188,7 +187,9 @@ public class IMService {
                         redis.hget("group:" + bean.fromGroup, "owner")
                                 .subscribe(s -> {
                                     bean.toUser = s;
-                                    sendMessage(client, bean);
+                                    bean.fromUser=client.<String>get("username");
+                                    if(bean.fromUser != null)
+                                        sendMessage(bean);
                                 });
                     }
                 });
@@ -211,18 +212,16 @@ public class IMService {
                                 (aLong, aLong2) -> true
                         );
                     } else return Observable.just(false);
-                }).doOnNext(aBoolean -> {
-                    sendMessage(client, bean);
-                });
+                }).doOnNext(aBoolean -> sendMessage(bean));
     }
 
     public Observable<Boolean> removeFriend(SocketIOClient client, String username) {
-        if(client.<String>get("username") == null) {
+        if (client.<String>get("username") == null) {
             return Observable.create(subscriber -> subscriber.onError(IMError.UNLOGIN));
         }
         return redis.srem(client.<String>get("username") + "friends", username)
                 .doOnNext(aLong -> {
-                    if(aLong == 0)
+                    if (aLong == 0)
                         throw IMError.INVALI_REQUEST;
                 }).map(aLong1 -> aLong1 > 0);
     }
@@ -237,8 +236,9 @@ public class IMService {
                                 client.sendEvent(event, new AckCallback<Object>(Object.class, 5000) {
                                     @Override
                                     public void onSuccess(Object result) {
-                                        redis.zrem("tmpMsg", JSON.toJSONString(bean));
+                                        redis.zrem("tmpMsg", JSON.toJSONString(bean)).subscribe();
                                         subscriber.onNext(true);
+                                        subscriber.onCompleted();
                                     }
 
                                     @Override
@@ -252,11 +252,33 @@ public class IMService {
                 .subscribe();
     }
 
+    private boolean msgQueueStarted = false;
+
+    public void startMsgQueue() {
+        if(msgQueueStarted) return;
+        Observable.interval(100, TimeUnit.MILLISECONDS)
+                .flatMap(aLong -> redis.lrange("msgQueue", 0, 1000))
+                .map(s -> JSON.<MessageBean>parseObject(s, MessageBean.class))
+//                .map(messageBean -> messageBean)
+        .subscribe(this::sendMessage, throwable -> restartMsgQueue());
+    }
+
+    private void restartMsgQueue(){
+        msgQueueStarted = false;
+        startMsgQueue();
+    }
+
     public static void main(String[] args) throws InterruptedException {
-        Observable.create(subscriber -> {
-            System.out.println(123);
-            subscriber.onError(new NullPointerException());
-        }).retry(3).subscribe();
+        Timer timer = new Timer();
+        Observable.interval(0, TimeUnit.MILLISECONDS)
+                .limit(100)
+                .map(aLong -> {
+                    if(aLong == 20)
+                        throw new NullPointerException();
+                    return aLong;
+                })
+                .onErrorReturn(throwable -> -1L)
+                .subscribe(System.out::println, System.out::println, () -> System.out.println("com"));
         Thread.currentThread().join();
     }
 }
