@@ -259,7 +259,7 @@ public class IMService {
                 .flatMap(aLong -> redis.lrange("msgQueue", 0, 1000))
                 .map(s -> JSON.<MessageBean>parseObject(s, MessageBean.class))
 //                .map(messageBean -> messageBean)
-        .subscribe(this::sendMessage, throwable -> restartMsgQueue());
+        .subscribe(this::sendMessage, throwable ->we restartMsgQueue());
     }
 
     private void restartMsgQueue(){
