@@ -97,7 +97,8 @@ public class IMService {
     }
 
     public Observable<String> getKeyEncrypted(SocketIOClient client, String username) {
-        return redis.hget("user:" + username, "keyEncrypted");
+        return redis.hget("user:" + username, "keyEncrypted")
+                .compose(Dao.suportNull(IMError.USERNAME_NOT_EXIST));
     }
 
     public Observable<Boolean> updateUserInfo(SocketIOClient client, UpdateUserInfoBean bean) {

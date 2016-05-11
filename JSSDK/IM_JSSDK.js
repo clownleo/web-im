@@ -53,21 +53,27 @@ var clientIO = function(){
             })
             .subscribe(function (data) {
                 //TODO 将注册信息发送给服务器
-                client.emit("register" , data , function(){
-                    console.log("注册成功");
-                    console.log(data.username);
-                    console.log(data.key_encrypted);
-                    console.log(data.key_sign);
-                    console.log(data.pub_key);
+                client.emit("register" , data , function(result){
+                    if(result == 0){
+                        console.log("注册成功");
+                        console.log(data.username);
+                        console.log(data.key_encrypted);
+                        console.log(data.key_sign);
+                        console.log(data.pub_key);
+                    }else{
+
+                    }
                 });
             })
     }
     var login = function(inputUser) {
         Rx.Observable
-            .fromPromise(
+            .create(
             //TODO 从服务器获取stamp及MQA
-            client.emit("get key encrypted" , inputUser.username , function(data){
+            subscriber => client.emit("get key encrypted" , inputUser.username , function(data){
                 console.log(data);
+                subscriber.onNext(data);
+                subscriber.onCompleted();
             })
         )
             //.map(function (user) {

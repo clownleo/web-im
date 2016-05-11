@@ -164,6 +164,14 @@ public class WebIMBootstrap {
                 }
         );
 
+        socketIOServer.addEventListener(
+                "i need timeout",
+                String.class,
+                (BaseListener<String>) (client, data, ackSender) -> {
+
+                }
+        );
+
 //        socketIOServer.addEventListener(
 //                IMEvent.LOGIN,
 //                LoginBean.class,
