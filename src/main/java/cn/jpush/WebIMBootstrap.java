@@ -93,6 +93,18 @@ public class WebIMBootstrap {
 //            imService.channelInit(socketIOClient, packet);
 //        });
         socketIOServer.addEventListener(
+                "new stamp" ,
+                Object.class,
+                (BaseListener<Object>) (client, data, ackSender) -> {
+                    imService.newStamp(client)
+                            .subscribe(
+                                    ackSender::sendAckData,
+                                    throwable -> ackSender.sendAckData(((IMError) throwable).getCode())
+                            );
+                }
+        );
+
+        socketIOServer.addEventListener(
                 IMEvent.REGISTER,
                 RegisterBean.class,
                 (BaseListener<RegisterBean>) (client, data, ackSender) -> {
