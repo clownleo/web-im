@@ -98,7 +98,7 @@ public class WebIMBootstrap {
                 (BaseListener<Object>) (client, data, ackSender) -> {
                     imService.newStamp(client)
                             .subscribe(
-                                    stamp -> ackSender.sendAckData(0, stamp),
+                    stamp -> ackSender.sendAckData(0, stamp),
                                     throwable -> ackSender.sendAckData(((IMError) throwable).getCode())
                             );
                 }

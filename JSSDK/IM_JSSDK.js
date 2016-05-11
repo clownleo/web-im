@@ -51,7 +51,6 @@ var clientIO = function () {
             })
             .map(function (data) {
                 var key_encrypted = CryptoJS.encryptAES4Java(data.privateKey, user.pwd);
-                console.log("key:" + data.privateKey);
                 var key_sign = SHA256(data.privateKey);
                 return {
                     username: user.username,
@@ -103,12 +102,12 @@ var clientIO = function () {
             .doOnNext(function (x) {
                 console.log(x);
                 client.emit("login" , {username:inputUser.username,signature:x} , function(data){
+                    console.log(data);
                     if(data == 0){
                         console.log("login success");
                     }else{
                         privateKey = null;
                     }
-                    console.log(data);
                 })
             });
     };
