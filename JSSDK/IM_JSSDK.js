@@ -15,27 +15,27 @@ var utils = {
     }
 };
 
-var clientIO = function(){
+var clientIO = function () {
     var client = io("ws://localhost:9090");
     var privateKey;
     var chatEncryptKeyArr = [];
     var chatDecryptKeyArr = [];
     var publicKeyArr = [];
     var randomURL = "https://www.random.org/integers/?num=10&min=1&max=1000000000&col=10&base=16&format=plain&rnd=new";
-    var register = function(localhostRan, user) {
+    var register = function (localhostRan, user) {
         var stream;
         if (localhostRan) {
             stream = Rx.Observable.just(utils.randomStr(80));
         } else {
             stream = Rx.Observable
                 .fromPromise(
-                    $.ajax({
-                        url: randomURL
-                    }).promise()
-                )
+                $.ajax({
+                    url: randomURL
+                }).promise()
+            )
                 .map((s) => s.split('\t').join('').slice(0, -1));
         }
-        stream
+        return stream
             .map(function (s) {
                 var publicKey = cryptico.publicKeyString(cryptico.generateRSAKey(s, 1024));
                 //setPrivateKey(s);
@@ -48,54 +48,59 @@ var clientIO = function(){
                     username: user.username,
                     key_encrypted: key_encrypted,
                     key_sign: key_sign,
-                    pub_key: data.publicKey
+                    pub_key: data.publicKey,
+                    info: "",
+                    rid: 123
                 };
             })
-            .subscribe(function (data) {
+            .doOnNext(function (data) {
                 //TODO 将注册信息发送给服务器
-                client.emit("register" , data , function(result){
-                    if(result == 0){
+                client.emit("register", data, function (result) {
+                    if (result == 0) {
                         console.log("注册成功");
                         console.log(data.username);
                         console.log(data.key_encrypted);
                         console.log(data.key_sign);
                         console.log(data.pub_key);
-                    }else{
-
+                    } else {
+                        console.log(result);
                     }
                 });
-            })
-    }
-    var login = function(inputUser) {
-        Rx.Observable
+            });
+    };
+    var login = function (inputUser) {
+        return Rx.Observable
             .create(
             //TODO 从服务器获取stamp及MQA
-            subscriber => client.emit("get key encrypted" , inputUser.username , function(data){
-                console.log(data);
-                subscriber.onNext(data);
+                subscriber => client.emit("get key encrypted", inputUser.username, function (code) {
+                if (code) {
+                    subscriber.onError.apply(subscriber, arguments);
+                    return;
+                }
+                console.log(arguments);
+                subscriber.onNext.apply(subscriber, arguments);
                 subscriber.onCompleted();
+            }))
+            .map(function () {
+                var key = cryptico.decryptAESCBC(arguments[1], MD5(inputUser.pwd));
+                privateKey = key;
+                var ZQA = SHA256(key);
+                //TODO 登录是否仅对stamp加密
+                return cryptico.encryptAESCBC(user.stamp, MD5(ZQA));
             })
-        )
-            //.map(function (user) {
-            //    var key = cryptico.decryptAESCBC(user.MQA, MD5(inputUser.pwd));
-            //    privateKey = key;
-            //    var ZQA = SHA256(key);
-            //    //TODO 登录是否仅对stamp加密
-            //    return cryptico.encryptAESCBC(user.stamp, MD5(ZQA));
-            //})
-            .subscribe(function (x) {
+            .doOnNext(function (x) {
                 //TODO 将加密后的stamp发送给服务器
                 //TODO 登录失败：setPrivateKey(null);
-            })
-    }
-    var setPwdBck = function(inputUser) {
-        Rx.Observable
+            });
+    };
+    var setPwdBck = function (inputUser) {
+        return Rx.Observable
             .fromPromise(
-                //TODO 从服务器获取stamp及MQA
-                $.ajax({
-                    url: ""
-                }).promise()
-            )
+            //TODO 从服务器获取stamp及MQA
+            $.ajax({
+                url: ""
+            }).promise()
+        )
             .map(function (user) {
                 var key = cryptico.decryptAESCBC(user.MQA, MD5(inputUser.pwd));
                 var ZQA = SHA256(key);
@@ -104,18 +109,18 @@ var clientIO = function(){
                 var encryptStamp = cryptico.encryptAESCBC(user.stamp, MD5(ZQA));
                 return {BQA: BQA, encryptStamp: encryptStamp};
             })
-            .subscribe(function (x) {
+            .doOnNext(function (x) {
                 //TODO 将加密后的内容传给服务器
-            })
-    }
-    var setNewPwd = function(inputUser) {
-        Rx.Observable
+            });
+    };
+    var setNewPwd = function (inputUser) {
+        return Rx.Observable
             .fromPromise(
             //TODO 从服务器获取stamp及BQA
-                $.ajax({
-                    url: ""
-                }).promise()
-            )
+            $.ajax({
+                url: ""
+            }).promise()
+        )
             .map(function (user) {
                 var key = cryptico.decryptAESCBC(user.BQA, MD5(inputUser.pwd_bck));
                 var ZQA = SHA256(key);
@@ -124,11 +129,11 @@ var clientIO = function(){
                 var encryptStamp = cryptico.encryptAESCBC(user.stamp, MD5(ZQA));
                 return {MQA: MQA, encryptStamp: encryptStamp};
             })
-            .subscribe(function (x) {
+            .doOnNext(function (x) {
                 //TODO 将加密后的内容传给服务器
-            })
-    }
-    var sendMessage = function(message) {
+            });
+    };
+    var sendMessage = function (message) {
         var stream;
         var chatKey = SHA256(privateKey + message.to_uid);
         //TODO 确认聊天密钥已在服务器有存储
@@ -157,20 +162,22 @@ var clientIO = function(){
                         url: ""
                     }).promise();
                 })
-                .map(() => {chatEncryptKeyArr[message.to_uid] = true;})
+                .map(() => {
+                    chatEncryptKeyArr[message.to_uid] = true;
+                })
                 .just(chatKey);
         } else {
             stream = Rx.Observable.just(chatKey);
         }
-        stream
+        return stream
             .map(function (chatAESKey) {
                 message.context = cryptico.encryptAESCBC(message.chat, MD5(chatAESKey));
             })
-            .subscribe(function () {
+            .doOnNext(function () {
                 //TODO 将message发送给服务器
-            })
-    }
-    var recvMessage = function(message) {
+            });
+    };
+    var recvMessage = function (message) {
         var chatKey = chatDecryptKeyArr[message.from_gid];
         var stream;
         if (!chatKey) {
@@ -189,23 +196,23 @@ var clientIO = function(){
         } else {
             stream = Rx.Observable.just(chatKey);
         }
-        stream
+        return stream
             .map(function () {
                 message.context = cryptico.decryptAESCBC(message.context, MD5(chatKey));
             })
-            .subscribe(() => {});
-        return message;
-    }
+            .just(message);
+    };
 
     return {
-        register:register,
-        login:login,
-        setPwdBck:setPwdBck,
-        setNewPwd:setNewPwd,
-        sendMessage:sendMessage,
-        recvMessage:recvMessage
+        register: register,
+        login: login,
+        setPwdBck: setPwdBck,
+        setNewPwd: setNewPwd,
+        sendMessage: sendMessage,
+        recvMessage: recvMessage
     }
 };
 
 var client = clientIO();
-client.login({username:'abc',pwd:'abc'});
+//client.register(true,{username:"abc",pwd:"abc"}).subscribe();
+client.login({username: 'abc_', pwd: 'abc'}).subscribe(()=>{},(error)=>console.log("error:"+error));

@@ -15,6 +15,7 @@ import rx.Observable;
 
 import java.util.Date;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeoutException;
 
@@ -34,7 +35,7 @@ public class IMService {
                 .exists("user:" + bean.username)
                 .map(aLong -> aLong == 1)
                 .flatMap(ex -> {
-                    if (ex)
+                    if (!ex)
                         return redis.hmset("user:" + bean.username, new User(bean).getMap());
                     else
                         throw IMError.USERNAME_ALREADY_EXIST;
@@ -43,13 +44,18 @@ public class IMService {
 
     }
 
+    public Observable<String> newStamp(SocketIOClient client){
+        String uuid = String.valueOf(UUID.randomUUID());
+        client.set("stamp", uuid);
+        return Observable.just(uuid);
+    }
+
     public Observable<Boolean> auth(SocketIOClient client, LoginBean bean) {
-        return Observable
-                .zip(
-                        redis.hget("user:" + bean.username, "keySign"),
-                        redis.get("stamp:" + bean.username),
-                        (s1, s2) -> s1 + ":" + s2
-                )
+        if(client.<String>get("stamp") == null){
+            return Observable.create(subscriber -> subscriber.onError(IMError.INVALI_REQUEST));
+        }
+        return redis.hget("user:" + bean.username, "keySign")
+                .map(s -> s + ":" + client.<String>get("stamp"))
                 .compose(Dao.suportNull(IMError.USERNAME_NOT_EXIST))
                 .doOnNext(System.out::println)
                 .map(DigestUtils::sha256Hex)
@@ -58,7 +64,8 @@ public class IMService {
                         return true;
                     else throw IMError.AUTH_FAIL;
                 }).doOnNext(success -> {
-                    if (success && client != null) {
+                    if (success) {
+                        client.del("stamp");
                         userOnline.put(bean.username, client);
                         client.set("username", bean.username);
                     }
@@ -76,7 +83,7 @@ public class IMService {
         LoginBean loginBean = new LoginBean();
         loginBean.username = bean.username;
         loginBean.signature = bean.signature;
-        return auth(null, loginBean)
+        return auth(client, loginBean)
                 .flatMap(success ->
                                 redis.hset("user:" + bean.username, "keyEncryptedBck", bean.keyEncryptedBck)
                 );
@@ -86,7 +93,7 @@ public class IMService {
         LoginBean loginBean = new LoginBean();
         loginBean.username = bean.username;
         loginBean.signature = bean.signature;
-        return auth(null, loginBean)
+        return auth(client, loginBean)
                 .flatMap(success ->
                                 redis.hset("user:" + bean.username, "keyEncrypted", bean.keyEncrypted)
                 );
