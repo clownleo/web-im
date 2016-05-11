@@ -172,13 +172,13 @@ public class IMService {
                 });
     }
 
-    public Observable<Boolean> addGroup(SocketIOClient client, MessageBean bean) {
+    public Observable<Boolean> joinGroup(SocketIOClient client, MessageBean bean) {
         String username = client.<String>get("username");
         return redis.exists("group:" + bean.fromGroup)
                 .flatMap(aLong -> {
                     if (aLong <= 0)
                         throw IMError.TARGET_NOT_EXIST;
-                    return redis.sadd(username + ":addGroup", bean.fromGroup);
+                    return redis.sadd(username + ":joinGroup", bean.fromGroup);
                 })
                 .map(aLong1 -> aLong1 > 0)
                 .doOnNext(aBoolean -> {
@@ -194,10 +194,10 @@ public class IMService {
                 });
     }
 
-    public Observable<Boolean> replyOfAddGroup(SocketIOClient client, MessageBean bean) {
+    public Observable<Boolean> replyOfJsonGroup(SocketIOClient client, MessageBean bean) {
         String username = client.<String>get("username");
 
-        return redis.srem(bean.toUser + ":addGroup", bean.fromGroup)
+        return redis.srem(bean.toUser + ":joinGroup", bean.fromGroup)
                 .compose(RxUtils.suportNull(IMError.INVALI_REQUEST))
                 .doOnNext(aLong3 -> {
                     if (aLong3 <= 0)
