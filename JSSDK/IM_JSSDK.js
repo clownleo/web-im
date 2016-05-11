@@ -22,6 +22,14 @@ var clientIO = function () {
     var chatDecryptKeyArr = [];
     var publicKeyArr = [];
     var randomURL = "https://www.random.org/integers/?num=10&min=1&max=1000000000&col=10&base=16&format=plain&rnd=new";
+    var newStamp = function () {
+        return Rx.Observable.create(function (sub) {
+            client.emit("new stamp", function (code, stamp) {
+                sub.onNext(stamp);
+                sub.onCompleted();
+            })
+        });
+    };
     var register = function (localhostRan, user) {
         var stream;
         if (localhostRan) {
@@ -42,7 +50,8 @@ var clientIO = function () {
                 return {privateKey: s, publicKey: publicKey};
             })
             .map(function (data) {
-                var key_encrypted = cryptico.encryptAESCBC(data.privateKey, MD5(user.pwd));
+                var key_encrypted = CryptoJS.encryptAES4Java(data.privateKey, user.pwd);
+                console.log("key:" + data.privateKey);
                 var key_sign = SHA256(data.privateKey);
                 return {
                     username: user.username,
@@ -58,10 +67,10 @@ var clientIO = function () {
                 client.emit("register", data, function (result) {
                     if (result == 0) {
                         console.log("注册成功");
-                        console.log(data.username);
-                        console.log(data.key_encrypted);
-                        console.log(data.key_sign);
-                        console.log(data.pub_key);
+                        console.log("username:" + data.username);
+                        console.log("key_encrypted:" + data.key_encrypted);
+                        console.log("key_sign:" + data.key_sign);
+                        console.log("pub_key:" + data.pub_key);
                     } else {
                         console.log(result);
                     }
@@ -69,28 +78,38 @@ var clientIO = function () {
             });
     };
     var login = function (inputUser) {
-        return Rx.Observable
-            .create(
-            //TODO 从服务器获取stamp及MQA
-                subscriber => client.emit("get key encrypted", inputUser.username, function (code) {
-                if (code) {
-                    subscriber.onError.apply(subscriber, arguments);
-                    return;
-                }
-                console.log(arguments);
-                subscriber.onNext.apply(subscriber, arguments);
-                subscriber.onCompleted();
-            }))
-            .map(function () {
-                var key = cryptico.decryptAESCBC(arguments[1], MD5(inputUser.pwd));
+        return Rx.Observable.zip(
+            Rx.Observable
+                .create(
+                    subscriber => client.emit("get key encrypted", inputUser.username, function (code, data) {
+                    if (code) {
+                        subscriber.onError(data);
+                        return;
+                    }
+                    console.log("get key encrypted:" + data);
+                    subscriber.onNext(data);
+                    subscriber.onCompleted();
+                })),
+            newStamp(),
+            function (enk, stamp) {
+                console.log("stamp:" + stamp);
+                var key = CryptoJS.decryptAES4Java(enk, inputUser.pwd);
                 privateKey = key;
-                var ZQA = SHA256(key);
-                //TODO 登录是否仅对stamp加密
-                return cryptico.encryptAESCBC(user.stamp, MD5(ZQA));
-            })
+                var key_sign = SHA256(key);
+                console.log("key_sign:" + key_sign);
+                return CryptoJS.encryptAES4Java(stamp, key_sign);
+            }
+        )
             .doOnNext(function (x) {
-                //TODO 将加密后的stamp发送给服务器
-                //TODO 登录失败：setPrivateKey(null);
+                console.log(x);
+                client.emit("login" , {username:inputUser.username,signature:x} , function(data){
+                    if(data == 0){
+                        console.log("login success");
+                    }else{
+                        privateKey = null;
+                    }
+                    console.log(data);
+                })
             });
     };
     var setPwdBck = function (inputUser) {
@@ -215,4 +234,5 @@ var clientIO = function () {
 
 var client = clientIO();
 //client.register(true,{username:"abc",pwd:"abc"}).subscribe();
-client.login({username: 'abc_', pwd: 'abc'}).subscribe(()=>{},(error)=>console.log("error:"+error));
+client.login({username: 'abc', pwd: 'abc'}).subscribe(()=>{},(error)=>console.log("error:"+error));
+

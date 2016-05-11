@@ -8,6 +8,7 @@ abstract public class EventBean {
     public long rid;
 
     public boolean validate(){
-        return rid != 0;
+//        return rid != 0;
+        return true;
     }
 }

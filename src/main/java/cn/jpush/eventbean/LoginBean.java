@@ -19,8 +19,7 @@ public class LoginBean extends EventBean {
         return super.validate() &&
                 StringUtils.isNoneEmpty(
                         username,
-                        signature,
-                        stamp
+                        signature
                 );
     }
 

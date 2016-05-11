@@ -13,3 +13,20 @@ CryptoJS.hash16bytes=function(str){
     hash.sigBytes=8;
     return hash.toString();
 };
+
+CryptoJS.encryptAES4Java = function (word , key) {
+    key = CryptoJS.hash16bytes(key);
+    key = CryptoJS.enc.Utf8.parse(key);
+    var iv  = CryptoJS.enc.Utf8.parse('0102030405060708');
+    var srcs = CryptoJS.enc.Utf8.parse(word);
+    var encrypted = CryptoJS.AES.encrypt(srcs, key, { iv: iv,mode:CryptoJS.mode.CBC});
+    return encrypted.toString();
+}
+
+CryptoJS.decryptAES4Java = function (word , key) {
+    key = CryptoJS.hash16bytes(key);
+    key = CryptoJS.enc.Utf8.parse(key);
+    var iv  = CryptoJS.enc.Utf8.parse('0102030405060708');
+    var decrypt = CryptoJS.AES.decrypt(word, key, { iv: iv,mode:CryptoJS.mode.CBC});
+    return CryptoJS.enc.Utf8.stringify(decrypt).toString();
+}
