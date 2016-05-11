@@ -4,13 +4,16 @@ import cn.jpush.IMError;
 import cn.jpush.IMEvent;
 import cn.jpush.commons.utils.AES;
 import cn.jpush.commons.utils.RxUtils;
+import cn.jpush.entity.Group;
 import cn.jpush.entity.User;
 import cn.jpush.eventbean.*;
 import com.alibaba.fastjson.JSON;
 import com.corundumstudio.socketio.AckCallback;
 import com.corundumstudio.socketio.SocketIOClient;
+import com.google.common.collect.ImmutableMap;
 import com.lambdaworks.redis.RedisClient;
 import com.lambdaworks.redis.api.rx.RedisReactiveCommands;
+import jdk.nashorn.internal.ir.annotations.Immutable;
 import org.apache.commons.codec.digest.DigestUtils;
 import rx.Observable;
 
@@ -152,6 +155,22 @@ public class IMService {
                 .map(aLong1 -> aLong1 > 0);
     }
 
+    public Observable<Boolean> addGroup(SocketIOClient client, GroupBean bean) {
+        String username = client.<String>get("username");
+        Group group = new Group(bean);
+        group.owner = username;
+        if(username == null) {
+            return Observable.create(subscriber -> subscriber.onError(IMError.UNLOGIN));
+        }
+        return redis.exists("group:" + bean.groupName)
+                .flatMap(aLong -> {
+                    if (aLong <= 0)
+                        throw IMError.GROUP_NAME_ALREADY_EXIST;
+                    return redis.hmset("group:" + group.groupName, group.getMap());
+                })
+                .map("OK"::equalsIgnoreCase);
+    }
+
     public Observable<Boolean> replyOfAddFriend(SocketIOClient client, MessageBean bean) {
         String username = client.<String>get("username");
 
@@ -259,7 +278,9 @@ public class IMService {
                 .flatMap(aLong -> redis.lrange("msgQueue", 0, 1000))
                 .map(s -> JSON.<MessageBean>parseObject(s, MessageBean.class))
 //                .map(messageBean -> messageBean)
-        .subscribe(this::sendMessage, throwable -> restartMsgQueue());
+        .subscribe((bean) -> {
+            sendMessage(bean);
+        }, throwable -> restartMsgQueue());
     }
 
     private void restartMsgQueue(){
