@@ -2,7 +2,8 @@ package cn.jpush.service;
 
 import cn.jpush.IMError;
 import cn.jpush.IMEvent;
-import cn.jpush.dao.Dao;
+import cn.jpush.commons.utils.AES;
+import cn.jpush.commons.utils.RxUtils;
 import cn.jpush.entity.User;
 import cn.jpush.eventbean.*;
 import com.alibaba.fastjson.JSON;
@@ -53,16 +54,14 @@ public class IMService {
     }
 
     public Observable<Boolean> auth(SocketIOClient client, LoginBean bean) {
-        if(client.<String>get("stamp") == null){
+        String stamp = client.<String>get("stamp");
+        if(stamp == null){
             return Observable.create(subscriber -> subscriber.onError(IMError.INVALI_REQUEST));
         }
         return redis.hget("user:" + bean.username, "keySign")
-                .map(s -> s + ":" + client.<String>get("stamp"))
-                .compose(Dao.suportNull(IMError.USERNAME_NOT_EXIST))
-                .doOnNext(System.out::println)
-                .map(DigestUtils::sha256Hex)
-                .map((signature) -> {
-                    if (bean.signature.equals(signature))
+                .compose(RxUtils.suportNull(IMError.USERNAME_NOT_EXIST))
+                .map((keySign) -> {
+                    if (AES.Encrypt(stamp, keySign).equals(bean.signature))
                         return true;
                     else throw IMError.AUTH_FAIL;
                 }).doOnNext(success -> {
@@ -107,7 +106,7 @@ public class IMService {
 
     public Observable<String> getKeyEncrypted(SocketIOClient client, String username) {
         return redis.hget("user:" + username, "keyEncrypted")
-                .compose(Dao.suportNull(IMError.USERNAME_NOT_EXIST));
+                .compose(RxUtils.suportNull(IMError.USERNAME_NOT_EXIST));
     }
 
     public Observable<Boolean> updateUserInfo(SocketIOClient client, UpdateUserInfoBean bean) {
@@ -139,7 +138,7 @@ public class IMService {
 
     public Observable<Object> getUserInfo(SocketIOClient client, String username) {
         return redis.hget("user:" + username, "info")
-                .compose(Dao.suportNull(IMError.TARGET_NOT_EXIST));
+                .compose(RxUtils.suportNull(IMError.TARGET_NOT_EXIST));
     }
 
     public Observable<Boolean> addFriend(SocketIOClient client, MessageBean bean) {
@@ -157,7 +156,7 @@ public class IMService {
         String username = client.<String>get("username");
 
         return redis.srem(bean.toUser + ":addFriend", username)
-                .compose(Dao.suportNull(IMError.INVALI_REQUEST))
+                .compose(RxUtils.suportNull(IMError.INVALI_REQUEST))
                 .doOnNext(aLong1 -> {
                     if (aLong1 <= 0)
                         throw IMError.INVALI_REQUEST;
@@ -199,7 +198,7 @@ public class IMService {
         String username = client.<String>get("username");
 
         return redis.srem(bean.toUser + ":addGroup", bean.fromGroup)
-                .compose(Dao.suportNull(IMError.INVALI_REQUEST))
+                .compose(RxUtils.suportNull(IMError.INVALI_REQUEST))
                 .doOnNext(aLong3 -> {
                     if (aLong3 <= 0)
                         throw IMError.INVALI_REQUEST;
@@ -269,6 +268,7 @@ public class IMService {
     }
 
     public static void main(String[] args) throws InterruptedException {
+//        Aes256.encrypt()
         Timer timer = new Timer();
         Observable.interval(0, TimeUnit.MILLISECONDS)
                 .limit(100)
