@@ -15,6 +15,40 @@ var utils = {
     }
 };
 
+/**
+ * socket.io-client Rx化支持
+ */
+(function(){
+    var old_io = io;
+    io = function(){
+        var args=Array.prototype.slice.call(arguments, 0);
+        var client = old_io.apply(this, args);
+
+        client.rxEmit = function(){
+            var args=Array.prototype.slice.call(arguments, 0);
+            return Rx.Observable.create(function(subscriber){
+                args.push(function(code, data){
+                    if (code != 0) {
+                        console.log("RxEmit error:" + code + ",data:" + data);
+                        subscriber.onError({
+                            code:code,
+                            data:data
+                        });
+                        return;
+                    }
+                    subscriber.onNext(data);
+                    subscriber.onCompleted();
+                });
+
+                client.emit.apply(client, args);
+            });
+        };
+
+        return client;
+    }
+})();
+
+
 var clientIO = function () {
     var client = io("ws://localhost:9090");
     var privateKey;
@@ -23,12 +57,7 @@ var clientIO = function () {
     var publicKeyArr = [];
     var randomURL = "https://www.random.org/integers/?num=10&min=1&max=1000000000&col=10&base=16&format=plain&rnd=new";
     var newStamp = function () {
-        return Rx.Observable.create(function (sub) {
-            client.emit("new stamp", function (code, stamp) {
-                sub.onNext(stamp);
-                sub.onCompleted();
-            })
-        });
+        return client.rxEmit("new stamp");
     };
     var register = function (localhostRan, user) {
         var stream;
@@ -61,35 +90,21 @@ var clientIO = function () {
                     rid: 123
                 };
             })
-            .doOnNext(function (data) {
+            .flatMap(function (data) {
                 //TODO 将注册信息发送给服务器
-                client.emit("register", data, function (result) {
-                    if (result == 0) {
+                return client.rxEmit("register" , data)
+                    .doOnNext(function () {
                         console.log("register success");
                         console.log("username:" + data.username);
                         console.log("key_encrypted:" + data.key_encrypted);
                         console.log("key_sign:" + data.key_sign);
                         console.log("pub_key:" + data.pub_key);
-                    } else {
-                        console.log(result);
-                        console.log("register fail");
-                    }
-                });
+                    })
             });
     };
     var login = function (inputUser) {
         return Rx.Observable.zip(
-            Rx.Observable
-                .create(
-                    subscriber => client.emit("get key encrypted", inputUser.username, function (code, data) {
-                    if (code) {
-                        subscriber.onError(data);
-                        return;
-                    }
-                    console.log("get key encrypted:" + data);
-                    subscriber.onNext(data);
-                    subscriber.onCompleted();
-                })),
+            client.rxEmit("get key encrypted", inputUser.username),
             newStamp(),
             function (enk, stamp) {
                 console.log("stamp:" + stamp);
@@ -100,32 +115,17 @@ var clientIO = function () {
                 return CryptoJS.encryptAES4Java(stamp, key_sign);
             }
         )
-            .doOnNext(function (x) {
+            .flatMap(function (x) {
                 console.log(x);
-                client.emit("login" , {username:inputUser.username,signature:x} , function(data){
-                    console.log(data);
-                    if(data == 0){
+                return client.rxEmit("login" , {username:inputUser.username,signature:x})
+                    .doOnNext(function(){
                         console.log("login success");
-                    }else{
-                        privateKey = null;
-                        console.log("login fail");
-                    }
-                })
+                    })
             });
     };
     var setPwdBck = function (inputUser) {
         return Rx.Observable.zip(
-            Rx.Observable
-                .create(
-                    subscriber => client.emit("get key encrypted", inputUser.username, function (code, data) {
-                    if (code) {
-                        subscriber.onError(data);
-                        return;
-                    }
-                    console.log("get key encrypted:" + data);
-                    subscriber.onNext(data);
-                    subscriber.onCompleted();
-                })),
+            client.rxEmit("get key encrypted", inputUser.username),
             newStamp(),
             function (enk, stamp) {
                 var key = CryptoJS.decryptAES4Java(enk, inputUser.pwd);
@@ -136,32 +136,18 @@ var clientIO = function () {
                 return {username:inputUser.username,key_encrypted_bck: key_encrypted_bck, signature: encryptStamp};
             }
         )
-            .doOnNext(function (x) {
+            .flatMap(function (x) {
                 console.log(x);
-                client.emit("set key bck" , x , function(data){
-                    if(data == 0){
+                return client.rxEmit("set key bck" , x)
+                    .doOnNext(function(){
                         console.log("set key bck success");
-                    }else{
-                        console.error(data);
-                        console.log("set key bck fail");
-                    }
-                    privateKey = null;
-                })
+                        privateKey = null;
+                    })
             });
     };
     var setNewPwd = function (inputUser) {
         return Rx.Observable.zip(
-            Rx.Observable
-                .create(
-                    subscriber => client.emit("get key encrypted bck", inputUser.username, function (code, data) {
-                    if (code) {
-                        subscriber.onError(data);
-                        return;
-                    }
-                    console.log("get key encrypted bck:" + data);
-                    subscriber.onNext(data);
-                    subscriber.onCompleted();
-                })),
+            client.rxEmit("get key encrypted bck", inputUser.username),
             newStamp(),
             function (enKeyBck, stamp) {
                 var key = CryptoJS.decryptAES4Java(enKeyBck, inputUser.pwd_bck);
@@ -172,17 +158,13 @@ var clientIO = function () {
                 return {username:inputUser.username,key_encrypted: key_encrypted, signature: encryptStamp};
             }
         )
-            .doOnNext(function (x) {
+            .flatMap(function (x) {
                 console.log(x);
-                client.emit("reset key" , x , function(data){
-                    if(data == 0){
+                return client.rxEmit("reset key" , x)
+                    .doOnNext(function(){
                         console.log("reset key success");
-                    }else{
-                        console.error(data);
-                        console.log("reset key fail");
-                    }
-                    privateKey = null;
-                })
+                        privateKey = null;
+                    })
             });
     };
     var logout = function () {
@@ -266,15 +248,14 @@ var clientIO = function () {
         setNewPwd: setNewPwd,
         logout:logout,
         sendMessage: sendMessage,
-        recvMessage: recvMessage
+        recvMessage: recvMessage,
     }
 };
 
 var client = clientIO();
-//client.register(true,{username:"abc",pwd:"abc"}).subscribe();
-//client.login({username: 'abc', pwd: 'abc'}).subscribe(()=>{},(error)=>console.log("error:"+error));
+//client.register(true,{username:"abc",pwd:"abc"}).subscribe(()=>{},(error)=>{});
+//client.login({username: 'abc', pwd: 'abc'}).subscribe(()=>{},(error)=>console.log("error:"+error.code));
 //client.setPwdBck({username: 'abc', pwd: 'abc',pwd_bck:'臭包'}).subscribe(()=>{},(error)=>console.log("error:"+error));
 //client.setNewPwd({username: 'abc', newPwd: '123',pwd_bck:'臭包'}).subscribe(()=>{},(error)=>console.log("error:"+error));
-//client.login({username: 'abc', pwd: 'abc'}).subscribe(()=>{},(error)=>console.log("error:"+error));
-client.login({username: 'abc', pwd: '123'}).subscribe(()=>{},(error)=>console.log("error:"+error));
-
+//client.login({username: 'abc', pwd: 'abc'}).subscribe(()=>{},(error)=>console.log("error:"+error.code));
+client.login({username: 'abc', pwd: '123'}).subscribe(()=>{},(error)=>console.log("error:"+error.code));
