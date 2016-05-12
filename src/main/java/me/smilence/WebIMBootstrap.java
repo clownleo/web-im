@@ -239,6 +239,9 @@ public class WebIMBootstrap {
 //                            });
 //                }
 //        );
+
+        imService.startMsgQueue();
+        imService.startOfflineQueue();
     }
 
     public void run() {

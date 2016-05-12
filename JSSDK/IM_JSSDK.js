@@ -45,15 +45,29 @@ var utils = {
             });
         };
 
+        var eventListening = {};
+
+        client.rxOn = function(event){
+            var args=Array.prototype.slice.call(arguments, 0);
+            if(eventListening[event])
+                return eventListening[event];
+
+            return eventListening[event] = Rx.Observable.create(function(subscriber){
+                client.on(event, function(data, ack){
+                    subscriber.onNext(data);
+                    subscriber.onCompleted();
+                    ack();
+                });
+            });
+        };
+
         return client;
     }
 })();
 
 
 var clientIO = function () {
-    var client = io({
-        hostname:'localhost',
-        port:9090,
+    var client = io("ws://localhost:9090", {
         rememberUpgrade: true
     });
     var privateKey;
@@ -63,6 +77,15 @@ var clientIO = function () {
     var randomURL = "https://www.random.org/integers/?num=10&min=1&max=1000000000&col=10&base=16&format=plain&rnd=new";
     var newStamp = function () {
         return client.rxEmit("new stamp");
+    };
+    var setChatKey = function(message){
+        return client.rxEmit("" , message);
+    };
+    var getChatKey = function(message){
+        return client.rxEmit("" , message);
+    };
+    var getSbPublicKey = function(username){
+        return client.rxEmit("" , username);
     };
     var register = function (localhostRan, user) {
         var stream;
@@ -172,10 +195,26 @@ var clientIO = function () {
                     })
             });
     };
+
     var logout = function () {
         privateKey = null;
         //TODO 退出
     };
+
+    var addFriend = function(message){
+        return client.rxEmit("add friend",message)
+                    .doOnNext(function(){
+                console.log("add friend finish");
+            });
+    };
+
+    var replyAddFriend = function(message){
+        return client.rxEmit("reply of add friend" , message)
+                    .doOnNext(function(){
+                    console.log("add friend success");
+            })
+    };
+
     var sendMessage = function (message) {
         var stream;
         var chatKey = SHA256(privateKey + message.to_uid);
@@ -246,6 +285,14 @@ var clientIO = function () {
             .just(message);
     };
 
+    var onMsg = function(){
+        return client.rxOn("msg_sync");
+    };
+
+    var getFriendsList = function(){
+        return client.rxEmit("get friend list");
+    };
+
     return {
         register: register,
         login: login,
@@ -254,13 +301,26 @@ var clientIO = function () {
         logout:logout,
         sendMessage: sendMessage,
         recvMessage: recvMessage,
+        addFriend: addFriend,
+        replyAddFriend: replyAddFriend,
+        getFriendsList:getFriendsList,
+        onMsg: onMsg
     }
 };
 
 var client = clientIO();
+client.onMsg().subscribe(data => console.log(data));
 //client.register(true,{username:"abc",pwd:"abc"}).subscribe(()=>{},(error)=>{});
 //client.login({username: 'abc', pwd: 'abc'}).subscribe(()=>{},(error)=>console.log("error:"+error.code));
 //client.setPwdBck({username: 'abc', pwd: 'abc',pwd_bck:'臭包'}).subscribe(()=>{},(error)=>console.log("error:"+error));
 //client.setNewPwd({username: 'abc', newPwd: '123',pwd_bck:'臭包'}).subscribe(()=>{},(error)=>console.log("error:"+error));
 //client.login({username: 'abc', pwd: 'abc'}).subscribe(()=>{},(error)=>console.log("error:"+error.code));
-client.login({username: 'abc', pwd: '123'}).subscribe(()=>{},(error)=>console.log("error:"+error.code));
+//client.login({username: 'abc', pwd: '123'}).subscribe(()=>{},(error)=>console.log("error:"+error.code));
+
+//client.addFriend({from_user:'abc' , to_user:'kiss'}).subscribe(()={} , (error)=>{});
+//client.replyAddFriend({from_user:'kiss' , to_user:'abc',context:'YES'}).subscribe(()=>{},(error)=>{});
+
+//client.register(true,{username:"kiss",pwd:"abc"}).subscribe(()=>{},(error)=>{});
+//client.login({username: 'kiss', pwd: 'abc'}).subscribe(()=>{},(error)=>console.log("error:"+error.code));
+
+//client.getFriendsList().subscribe((data)=>{console.log(data)})

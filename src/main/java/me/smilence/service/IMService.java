@@ -158,7 +158,7 @@ public class IMService {
                 .map(aLong1 -> aLong1 > 0)
                 .doOnNext(aBoolean -> {
                     if (aBoolean) {
-                        sendMessage(bean);
+                        sendMessage(bean).subscribe();
                     }
                 });
     }
@@ -255,9 +255,8 @@ public class IMService {
         return Observable
                 .just(client.<String>get("username"))
                 .doOnNext(username -> rxAssert(
-                        username == null || !userOnline.containsKey(username),
-                        IMError.UNLOGIN))
-                .map(String::valueOf);
+                        userOnline.containsKey(username),
+                        IMError.UNLOGIN));
     }
 
     /**
@@ -280,7 +279,7 @@ public class IMService {
                                         super.onTimeout();
                                         subscriber.onError(new TimeoutException());
                                     }
-                                })
+                                },bean)
                 )
                 .retry((integer, throwable) -> throwable instanceof TimeoutException && integer < 3)
                 .subscribe();
