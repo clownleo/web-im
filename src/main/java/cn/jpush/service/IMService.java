@@ -300,7 +300,7 @@ public class IMService {
                 .limit(1000000)
                 .map(String::valueOf)
                 .collect(Collectors.toMap(s -> s, s -> s));
-        System.out.printf("cost: %f s", (System.currentTimeMillis() - start) / 1000.0);
+        System.out.printf("cost: %f s", (System.currentTimeMillis() - start) / 1000.0); 
         Thread.currentThread().join();
     }
 }
