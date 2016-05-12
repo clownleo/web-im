@@ -65,13 +65,14 @@ var clientIO = function () {
                 //TODO 将注册信息发送给服务器
                 client.emit("register", data, function (result) {
                     if (result == 0) {
-                        console.log("注册成功");
+                        console.log("register success");
                         console.log("username:" + data.username);
                         console.log("key_encrypted:" + data.key_encrypted);
                         console.log("key_sign:" + data.key_sign);
                         console.log("pub_key:" + data.pub_key);
                     } else {
                         console.log(result);
+                        console.log("register fail");
                     }
                 });
             });
@@ -107,49 +108,86 @@ var clientIO = function () {
                         console.log("login success");
                     }else{
                         privateKey = null;
+                        console.log("login fail");
                     }
                 })
             });
     };
     var setPwdBck = function (inputUser) {
-        return Rx.Observable
-            .fromPromise(
-            //TODO 从服务器获取stamp及MQA
-            $.ajax({
-                url: ""
-            }).promise()
-        )
-            .map(function (user) {
-                var key = cryptico.decryptAESCBC(user.MQA, MD5(inputUser.pwd));
-                var ZQA = SHA256(key);
-                var BQA = cryptico.encryptAESCBC(key, MD5(inputUser.pwd_bck));
+        return Rx.Observable.zip(
+            Rx.Observable
+                .create(
+                    subscriber => client.emit("get key encrypted", inputUser.username, function (code, data) {
+                    if (code) {
+                        subscriber.onError(data);
+                        return;
+                    }
+                    console.log("get key encrypted:" + data);
+                    subscriber.onNext(data);
+                    subscriber.onCompleted();
+                })),
+            newStamp(),
+            function (enk, stamp) {
+                var key = CryptoJS.decryptAES4Java(enk, inputUser.pwd);
+                var key_sign = SHA256(key);
+                var key_encrypted_bck = CryptoJS.encryptAES4Java(key, inputUser.pwd_bck);
                 //TODO 设置密保是如何对称加密相应的传输内容
-                var encryptStamp = cryptico.encryptAESCBC(user.stamp, MD5(ZQA));
-                return {BQA: BQA, encryptStamp: encryptStamp};
-            })
+                var encryptStamp = CryptoJS.encryptAES4Java(stamp, key_sign);
+                return {username:inputUser.username,key_encrypted_bck: key_encrypted_bck, signature: encryptStamp};
+            }
+        )
             .doOnNext(function (x) {
-                //TODO 将加密后的内容传给服务器
+                console.log(x);
+                client.emit("set key bck" , x , function(data){
+                    if(data == 0){
+                        console.log("set key bck success");
+                    }else{
+                        console.error(data);
+                        console.log("set key bck fail");
+                    }
+                    privateKey = null;
+                })
             });
     };
     var setNewPwd = function (inputUser) {
-        return Rx.Observable
-            .fromPromise(
-            //TODO 从服务器获取stamp及BQA
-            $.ajax({
-                url: ""
-            }).promise()
-        )
-            .map(function (user) {
-                var key = cryptico.decryptAESCBC(user.BQA, MD5(inputUser.pwd_bck));
-                var ZQA = SHA256(key);
-                var MQA = cryptico.encryptAESCBC(key, MD5(inputUser.newPwd));
+        return Rx.Observable.zip(
+            Rx.Observable
+                .create(
+                    subscriber => client.emit("get key encrypted bck", inputUser.username, function (code, data) {
+                    if (code) {
+                        subscriber.onError(data);
+                        return;
+                    }
+                    console.log("get key encrypted bck:" + data);
+                    subscriber.onNext(data);
+                    subscriber.onCompleted();
+                })),
+            newStamp(),
+            function (enKeyBck, stamp) {
+                var key = CryptoJS.decryptAES4Java(enKeyBck, inputUser.pwd_bck);
+                var key_sign = SHA256(key);
+                var key_encrypted = CryptoJS.encryptAES4Java(key, inputUser.newPwd);
                 //TODO 重置密码是如何对称加密相应的传输内容
-                var encryptStamp = cryptico.encryptAESCBC(user.stamp, MD5(ZQA));
-                return {MQA: MQA, encryptStamp: encryptStamp};
-            })
+                var encryptStamp = CryptoJS.encryptAES4Java(stamp, key_sign);
+                return {username:inputUser.username,key_encrypted: key_encrypted, signature: encryptStamp};
+            }
+        )
             .doOnNext(function (x) {
-                //TODO 将加密后的内容传给服务器
+                console.log(x);
+                client.emit("reset key" , x , function(data){
+                    if(data == 0){
+                        console.log("reset key success");
+                    }else{
+                        console.error(data);
+                        console.log("reset key fail");
+                    }
+                    privateKey = null;
+                })
             });
+    };
+    var logout = function () {
+        privateKey = null;
+        //TODO 退出
     };
     var sendMessage = function (message) {
         var stream;
@@ -226,6 +264,7 @@ var clientIO = function () {
         login: login,
         setPwdBck: setPwdBck,
         setNewPwd: setNewPwd,
+        logout:logout,
         sendMessage: sendMessage,
         recvMessage: recvMessage
     }
@@ -233,5 +272,9 @@ var clientIO = function () {
 
 var client = clientIO();
 //client.register(true,{username:"abc",pwd:"abc"}).subscribe();
-client.login({username: 'abc', pwd: 'abc'}).subscribe(()=>{},(error)=>console.log("error:"+error));
+//client.login({username: 'abc', pwd: 'abc'}).subscribe(()=>{},(error)=>console.log("error:"+error));
+//client.setPwdBck({username: 'abc', pwd: 'abc',pwd_bck:'臭包'}).subscribe(()=>{},(error)=>console.log("error:"+error));
+//client.setNewPwd({username: 'abc', newPwd: '123',pwd_bck:'臭包'}).subscribe(()=>{},(error)=>console.log("error:"+error));
+//client.login({username: 'abc', pwd: 'abc'}).subscribe(()=>{},(error)=>console.log("error:"+error));
+client.login({username: 'abc', pwd: '123'}).subscribe(()=>{},(error)=>console.log("error:"+error));
 
