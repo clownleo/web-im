@@ -126,7 +126,7 @@ public class IMService {
                         send(client, IMEvent.MSG_SYNC, bean);
                         return Observable.just(true);
                     } else {
-                        return redis.lpush("msg:" + bean.toUser, JSON.toJSONString(bean))
+                        return redis.rpush("msg:" + bean.toUser, JSON.toJSONString(bean))
                                 .map(aLong -> aLong > 0);
                     }
                 });
@@ -284,7 +284,11 @@ public class IMService {
     public void startMsgQueue() {
         if (msgQueueStarted) return;
         Observable.interval(100, TimeUnit.MILLISECONDS)
-                .flatMap(aLong -> redis.lrange("msgQueue", 0, 1000))
+                .flatMap(aLong -> Observable.zip(
+                        redis.lrange("msgQueue", 0, 1000)),
+                        redis.ltrim("msgQueue", 1001, -1),
+                        () -> {}
+                        )
 
                 .map(s -> JSON.<MessageBean>parseObject(s, MessageBean.class))
 //                .map(messageBean -> messageBean)
