@@ -7,11 +7,13 @@ import java.util.Map;
  * 错误的定义
  * Created by leo on 16-5-9.
  */
+@SuppressWarnings("ThrowableInstanceNeverThrown")
 public class IMError extends RuntimeException {
     public static IMError
             FORMAT_ERROR = new IMError(-1, "format error"),
             USERNAME_ALREADY_EXIST = new IMError(4002, "username already exist"),
             USERNAME_NOT_EXIST = new IMError(4003, "username not exist"),
+            GROUP_NAME_ALREADY_EXIST = new IMError(4008, "group name already exist"),
             AUTH_FAIL = new IMError(4004, "auth fail"),
             TARGET_NOT_EXIST = new IMError(4009, "target not exist"),
             UNLOGIN = new IMError(4005, "user unlogin"),

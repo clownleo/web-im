@@ -1,4 +1,5 @@
 /**
+ * IM SDK
  * Created by jimily on 16-5-10.
  */
 
@@ -50,7 +51,11 @@ var utils = {
 
 
 var clientIO = function () {
-    var client = io("ws://localhost:9090");
+    var client = io({
+        hostname:'localhost',
+        port:9090,
+        rememberUpgrade: true
+    });
     var privateKey;
     var chatEncryptKeyArr = [];
     var chatDecryptKeyArr = [];

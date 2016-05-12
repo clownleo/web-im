@@ -4,6 +4,7 @@ import cn.jpush.IMError;
 import cn.jpush.IMEvent;
 import cn.jpush.commons.utils.AES;
 import cn.jpush.commons.utils.RxUtils;
+import cn.jpush.entity.Group;
 import cn.jpush.entity.User;
 import cn.jpush.eventbean.*;
 import com.alibaba.fastjson.JSON;
@@ -11,16 +12,15 @@ import com.corundumstudio.socketio.AckCallback;
 import com.corundumstudio.socketio.SocketIOClient;
 import com.lambdaworks.redis.RedisClient;
 import com.lambdaworks.redis.api.rx.RedisReactiveCommands;
-import org.apache.commons.codec.digest.DigestUtils;
 import rx.Observable;
+import rx.Subscriber;
 
-import java.util.Date;
-import java.util.Map;
-import java.util.UUID;
-import java.util.Timer;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * IM service
@@ -47,7 +47,7 @@ public class IMService {
 
     }
 
-    public Observable<String> newStamp(SocketIOClient client){
+    public Observable<String> newStamp(SocketIOClient client) {
         String uuid = String.valueOf(UUID.randomUUID());
         client.set("stamp", uuid);
         return Observable.just(uuid);
@@ -55,9 +55,9 @@ public class IMService {
 
     public Observable<Boolean> auth(SocketIOClient client, LoginBean bean) {
         String stamp = client.<String>get("stamp");
-        if(stamp == null){
+        if (stamp == null)
             return Observable.create(subscriber -> subscriber.onError(IMError.INVALI_REQUEST));
-        }
+
         return redis.hget("user:" + bean.username, "keySign")
                 .compose(RxUtils.suportNull(IMError.USERNAME_NOT_EXIST))
                 .map((keySign) -> {
@@ -74,10 +74,11 @@ public class IMService {
     }
 
     public Observable<Boolean> logout(SocketIOClient client) {
-        return Observable.just(
-                client.<String>get("username") != null &&
-                        userOnline.remove(client.<String>get("username")) != null
-        );
+
+        boolean result = client.<String>get("username") != null &&
+                userOnline.remove(client.<String>get("username")) != null;
+        client.del("client");
+        return Observable.just(result);
     }
 
     public Observable<Boolean> setKeyBak(SocketIOClient client, KeyBckBean bean) {
@@ -152,6 +153,22 @@ public class IMService {
                 .map(aLong1 -> aLong1 > 0);
     }
 
+    public Observable<Boolean> addGroup(SocketIOClient client, GroupBean bean) {
+        String username = client.<String>get("username");
+        Group group = new Group(bean);
+        group.owner = username;
+        if (username == null) {
+            return Observable.create(subscriber -> subscriber.onError(IMError.UNLOGIN));
+        }
+        return redis.exists("group:" + bean.groupName)
+                .flatMap(aLong -> {
+                    if (aLong <= 0)
+                        throw IMError.GROUP_NAME_ALREADY_EXIST;
+                    return redis.hmset("group:" + group.groupName, group.getMap());
+                })
+                .map("OK"::equalsIgnoreCase);
+    }
+
     public Observable<Boolean> replyOfAddFriend(SocketIOClient client, MessageBean bean) {
         String username = client.<String>get("username");
 
@@ -186,8 +203,8 @@ public class IMService {
                         redis.hget("group:" + bean.fromGroup, "owner")
                                 .subscribe(s -> {
                                     bean.toUser = s;
-                                    bean.fromUser=client.<String>get("username");
-                                    if(bean.fromUser != null)
+                                    bean.fromUser = client.<String>get("username");
+                                    if (bean.fromUser != null)
                                         sendMessage(bean);
                                 });
                     }
@@ -254,33 +271,36 @@ public class IMService {
     private boolean msgQueueStarted = false;
 
     public void startMsgQueue() {
-        if(msgQueueStarted) return;
+        if (msgQueueStarted) return;
         Observable.interval(100, TimeUnit.MILLISECONDS)
                 .flatMap(aLong -> redis.lrange("msgQueue", 0, 1000))
                 .map(s -> JSON.<MessageBean>parseObject(s, MessageBean.class))
 //                .map(messageBean -> messageBean)
-        .subscribe((bean) -> {
-            sendMessage(bean);
-        }, throwable -> restartMsgQueue());
+                .subscribe((bean) -> {
+                    sendMessage(bean);
+                }, throwable -> restartMsgQueue());
     }
 
-    private void restartMsgQueue(){
+    private void restartMsgQueue() {
         msgQueueStarted = false;
         startMsgQueue();
     }
 
     public static void main(String[] args) throws InterruptedException {
 //        Aes256.encrypt()
-        Timer timer = new Timer();
-        Observable.interval(0, TimeUnit.MILLISECONDS)
-                .limit(100)
-                .map(aLong -> {
-                    if(aLong == 20)
-                        throw new NullPointerException();
-                    return aLong;
-                })
-                .onErrorReturn(throwable -> -1L)
-                .subscribe(System.out::println, System.out::println, () -> System.out.println("com"));
+//        Map<String, String> m = new HashMap<>(1000000);
+        long start = System.currentTimeMillis();
+//        Observable.range(1, 1000000)
+//                .map(String::valueOf)
+//                .collect(() -> m, (map, s) -> map.put(s, s))
+//                .doOnNext(stringStringMap ->
+//                                System.out.printf("cost: %f s", (System.currentTimeMillis() - start) / 1000.0)
+//                ).subscribe();
+        Stream.iterate(1, integer -> integer + 1)
+                .limit(1000000)
+                .map(String::valueOf)
+                .collect(Collectors.toMap(s -> s, s -> s));
+        System.out.printf("cost: %f s", (System.currentTimeMillis() - start) / 1000.0); 
         Thread.currentThread().join();
     }
 }
