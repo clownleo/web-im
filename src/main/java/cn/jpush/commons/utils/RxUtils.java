@@ -34,8 +34,7 @@ public class RxUtils {
 
     static public <T> Observable.Transformer<T, List<T>> listSuportNull() {
         return tObservable -> tObservable
-                .collect(Lists::<T>newLinkedList, List::add)
-                .map(o -> o.size() == 0 ? null : o);
+                .collect(Lists::<T>newLinkedList, List::add);
     }
 
     static public <T> Observable.Transformer<T, T> suportNull() {
@@ -69,5 +68,13 @@ public class RxUtils {
                         }
                     });
                 });
+    }
+
+    /**
+     * 判断flag条件，不满足的情况下将RuntimeException抛出
+     */
+    static public void rxAssert(boolean flag, RuntimeException throwable){
+        if(!flag)
+            throw throwable;
     }
 }

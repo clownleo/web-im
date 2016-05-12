@@ -12,8 +12,8 @@ import com.corundumstudio.socketio.AckCallback;
 import com.corundumstudio.socketio.SocketIOClient;
 import com.lambdaworks.redis.RedisClient;
 import com.lambdaworks.redis.api.rx.RedisReactiveCommands;
+import org.apache.commons.lang3.StringUtils;
 import rx.Observable;
-import rx.Subscriber;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,6 +21,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static cn.jpush.commons.utils.RxUtils.rxAssert;
 
 /**
  * IM service
@@ -36,13 +38,8 @@ public class IMService {
     public Observable<Boolean> register(SocketIOClient client, RegisterBean bean) {
         return redis
                 .exists("user:" + bean.username)
-                .map(aLong -> aLong == 1)
-                .flatMap(ex -> {
-                    if (!ex)
-                        return redis.hmset("user:" + bean.username, new User(bean).getMap());
-                    else
-                        throw IMError.USERNAME_ALREADY_EXIST;
-                })
+                .doOnNext(num -> rxAssert(num <= 0, IMError.USERNAME_ALREADY_EXIST))
+                .flatMap(ignore -> redis.hmset("user:" + bean.username, new User(bean).getMap()))
                 .map("OK"::equalsIgnoreCase);
 
     }
@@ -60,17 +57,13 @@ public class IMService {
 
         return redis.hget("user:" + bean.username, "keySign")
                 .compose(RxUtils.suportNull(IMError.USERNAME_NOT_EXIST))
-                .map((keySign) -> {
-                    if (AES.Encrypt(stamp, keySign).equals(bean.signature))
-                        return true;
-                    else throw IMError.AUTH_FAIL;
-                }).doOnNext(success -> {
-                    if (success) {
-                        client.del("stamp");
-                        userOnline.put(bean.username, client);
-                        client.set("username", bean.username);
-                    }
-                });
+                .doOnNext(keySign -> rxAssert(AES.Encrypt(stamp, keySign).equals(bean.signature), IMError.AUTH_FAIL))
+                .doOnNext(ignore -> {
+                    client.del("stamp");
+                    userOnline.put(bean.username, client);
+                    client.set("username", bean.username);
+                })
+                .map(ignore -> true);
     }
 
     public Observable<Boolean> logout(SocketIOClient client) {
@@ -116,25 +109,33 @@ public class IMService {
         return redis.hset("user:" + client.<String>get("username"), "info", JSON.toJSONString(bean.info));
     }
 
-    public Observable<Boolean> sendMessage(MessageBean bean) {
+    public Observable<Boolean> send2Friend(SocketIOClient client, MessageBean bean) {
+        String username = client.<String>get("username");
+        return redis.sismember(username + ":friends", bean.toUser)
+                .doOnNext(isMem -> rxAssert(isMem, IMError.INVALI_REQUEST))
+                .flatMap(ignore -> sendMessage(bean));
+    }
+
+    private Observable<Boolean> sendMessage(MessageBean bean) {
         bean.dateTime = new Date();
         return redis.exists("user:" + bean.toUser)
-                .map(aLong -> aLong > 0)
-                .flatMap(isExist -> {
-                    if (isExist) {
-                        SocketIOClient cl = userOnline.get(bean.toUser);
-                        if (cl != null) {
-                            send(cl, IMEvent.MSG_SYNC, bean);
-                            return Observable.just(true);
-                        } else {
-                            return redis.lpush("msg:" + bean.toUser, JSON.toJSONString(bean))
-                                    .map(aLong -> aLong > 0);
-                        }
+                .doOnNext(num -> rxAssert(num > 0, IMError.TARGET_NOT_EXIST))
+                .map(ignore -> userOnline.get(bean.toUser))
+                .flatMap(client -> {
+                    if (client != null) {
+                        send(client, IMEvent.MSG_SYNC, bean);
+                        return Observable.just(true);
                     } else {
-                        redis.zrem("tmpMsg", JSON.toJSONString(bean)).retry().subscribe();
-                        throw IMError.TARGET_NOT_EXIST;
+                        return redis.lpush("msg:" + bean.toUser, JSON.toJSONString(bean))
+                                .map(aLong -> aLong > 0);
                     }
                 });
+    }
+
+    public Observable<List<String> > getFriendList(SocketIOClient client){
+        return rxGetUsername(client)
+                .flatMap(username -> redis.smembers(username + ":friends"))
+                .compose(RxUtils.listSuportNull());
     }
 
     public Observable<Object> getUserInfo(SocketIOClient client, String username) {
@@ -145,27 +146,27 @@ public class IMService {
     public Observable<Boolean> addFriend(SocketIOClient client, MessageBean bean) {
         String username = client.<String>get("username");
         return redis.exists("user:" + bean.toUser)
-                .flatMap(aLong -> {
-                    if (aLong <= 0)
-                        throw IMError.TARGET_NOT_EXIST;
-                    return redis.sadd(username + ":addFriend", bean.toUser);
-                })
-                .map(aLong1 -> aLong1 > 0);
+                .doOnNext(num -> rxAssert(num > 0, IMError.INVALI_REQUEST))
+                .flatMap(aLong -> redis.sadd(username + ":addFriend", bean.toUser))
+                .map(aLong1 -> aLong1 > 0)
+                .doOnNext(aBoolean -> {
+                    if (aBoolean) {
+                        sendMessage(bean);
+                    }
+                });
     }
 
     public Observable<Boolean> addGroup(SocketIOClient client, GroupBean bean) {
-        String username = client.<String>get("username");
-        Group group = new Group(bean);
-        group.owner = username;
-        if (username == null) {
-            return Observable.create(subscriber -> subscriber.onError(IMError.UNLOGIN));
-        }
+
         return redis.exists("group:" + bean.groupName)
-                .flatMap(aLong -> {
-                    if (aLong <= 0)
-                        throw IMError.GROUP_NAME_ALREADY_EXIST;
-                    return redis.hmset("group:" + group.groupName, group.getMap());
+                .doOnNext(isExist -> rxAssert(isExist <= 0, IMError.GROUP_NAME_ALREADY_EXIST))
+                .flatMap(ignore -> rxGetUsername(client))
+                .map(username -> {
+                    Group group = new Group(bean);
+                    group.owner = username;
+                    return group;
                 })
+                .flatMap(group -> redis.hmset("group:" + group.groupName, group.getMap()))
                 .map("OK"::equalsIgnoreCase);
     }
 
@@ -174,10 +175,7 @@ public class IMService {
 
         return redis.srem(bean.toUser + ":addFriend", username)
                 .compose(RxUtils.suportNull(IMError.INVALI_REQUEST))
-                .doOnNext(aLong1 -> {
-                    if (aLong1 <= 0)
-                        throw IMError.INVALI_REQUEST;
-                })
+                .doOnNext(num -> rxAssert(num > 0, IMError.INVALI_REQUEST))
                 .flatMap(aLong1 -> {
                     if ("YES".equalsIgnoreCase(bean.context)) {
                         return Observable.zip(
@@ -190,13 +188,10 @@ public class IMService {
     }
 
     public Observable<Boolean> joinGroup(SocketIOClient client, MessageBean bean) {
-        String username = client.<String>get("username");
         return redis.exists("group:" + bean.fromGroup)
-                .flatMap(aLong -> {
-                    if (aLong <= 0)
-                        throw IMError.TARGET_NOT_EXIST;
-                    return redis.sadd(username + ":joinGroup", bean.fromGroup);
-                })
+                .doOnNext(num -> rxAssert(num > 0, IMError.TARGET_NOT_EXIST))
+                .flatMap(aLong -> rxGetUsername(client))
+                .flatMap(username -> redis.sadd(username + ":joinGroup", bean.fromGroup))
                 .map(aLong1 -> aLong1 > 0)
                 .doOnNext(aBoolean -> {
                     if (aBoolean) {
@@ -211,35 +206,51 @@ public class IMService {
                 });
     }
 
-    public Observable<Boolean> replyOfJsonGroup(SocketIOClient client, MessageBean bean) {
-        String username = client.<String>get("username");
-
-        return redis.srem(bean.toUser + ":joinGroup", bean.fromGroup)
+    public Observable<Boolean> replyOfJoinGroup(SocketIOClient client, MessageBean bean) {
+        return Observable
+                .zip(
+                        redis.hget("group:" + bean.fromGroup, "owner"),
+                        rxGetUsername(client),
+                        (owner, myName) -> {
+                            //验证是否群主
+                            rxAssert(StringUtils.equals(owner, myName), IMError.INVALI_REQUEST);
+                            return null;
+                        }
+                )
+                .flatMap(ignore -> redis.srem(bean.toUser + ":joinGroup", bean.fromGroup))
                 .compose(RxUtils.suportNull(IMError.INVALI_REQUEST))
-                .doOnNext(aLong3 -> {
-                    if (aLong3 <= 0)
-                        throw IMError.INVALI_REQUEST;
-                })
-                .flatMap(aLong1 -> {
+                //判断是否是为有效的入群回复
+                .doOnNext(num -> rxAssert(num > 0, IMError.INVALI_REQUEST))
+                .flatMap(ignore -> {
                     if ("YES".equalsIgnoreCase(bean.context)) {
                         return Observable.zip(
                                 redis.sadd(bean.toUser + ":myGroups", bean.fromGroup),
                                 redis.sadd(bean.fromGroup + ":members", bean.toUser),
-                                (aLong, aLong2) -> true
+                                (r1, r2) -> r1 > 0 && r2 > 0
                         );
-                    } else return Observable.just(false);
-                }).doOnNext(aBoolean -> sendMessage(bean));
+                    } else
+                        return Observable.just(false);
+                })
+                .doOnNext(aBoolean -> sendMessage(bean));
     }
 
     public Observable<Boolean> removeFriend(SocketIOClient client, String username) {
-        if (client.<String>get("username") == null) {
-            return Observable.create(subscriber -> subscriber.onError(IMError.UNLOGIN));
-        }
-        return redis.srem(client.<String>get("username") + "friends", username)
-                .doOnNext(aLong -> {
-                    if (aLong == 0)
-                        throw IMError.INVALI_REQUEST;
-                }).map(aLong1 -> aLong1 > 0);
+        return rxGetUsername(client)
+                .flatMap(myName -> redis.srem(myName + "friends", username))
+                .doOnNext(num -> rxAssert(num > 0, IMError.INVALI_REQUEST))
+                .map(aLong1 -> aLong1 > 0);
+    }
+
+    /**
+     * 获取登录状态的用户的用户名
+     */
+    private Observable<String> rxGetUsername(SocketIOClient client) {
+        return Observable
+                .just(client.<String>get("username"))
+                .doOnNext(username -> rxAssert(
+                        username == null || !userOnline.containsKey(username),
+                        IMError.UNLOGIN))
+                .map(String::valueOf);
     }
 
     /**
@@ -300,7 +311,7 @@ public class IMService {
                 .limit(1000000)
                 .map(String::valueOf)
                 .collect(Collectors.toMap(s -> s, s -> s));
-        System.out.printf("cost: %f s", (System.currentTimeMillis() - start) / 1000.0); 
+        System.out.printf("cost: %f s", (System.currentTimeMillis() - start) / 1000.0);
         Thread.currentThread().join();
     }
 }
