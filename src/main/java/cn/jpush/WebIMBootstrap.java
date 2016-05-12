@@ -98,7 +98,7 @@ public class WebIMBootstrap {
                 (BaseListener<Object>) (client, data, ackSender) -> {
                     imService.newStamp(client)
                             .subscribe(
-                    stamp -> ackSender.sendAckData(0, stamp),
+                                    stamp -> ackSender.sendAckData(0, stamp),
                                     throwable -> ackSender.sendAckData(((IMError) throwable).getCode())
                             );
                 }
@@ -177,53 +177,12 @@ public class WebIMBootstrap {
         );
 
         socketIOServer.addEventListener(
-                "add friend",
-                MessageBean.class,
-                (BaseListener<MessageBean>) (client, data, ackSender) -> {
-                    imService.addFriend(client, data)
-                            .subscribe(
-                                    ignore -> ackSender.sendAckData(0),
-                                    throwable -> ackSender.sendAckData(((IMError) throwable).getCode())
-                            );
+                "i need timeout",
+                String.class,
+                (BaseListener<String>) (client, data, ackSender) -> {
+
                 }
         );
-
-        socketIOServer.addEventListener(
-                "reply of add friend",
-                MessageBean.class,
-                (BaseListener<MessageBean>) (client, data, ackSender) -> {
-                    imService.replyOfAddFriend(client, data)
-                            .subscribe(
-                                    ignore -> ackSender.sendAckData(0),
-                                    throwable -> ackSender.sendAckData(((IMError) throwable).getCode())
-                            );
-                }
-        );
-
-        socketIOServer.addEventListener(
-                "send to friend",
-                MessageBean.class,
-                (BaseListener<MessageBean>) (client, data, ackSender) -> {
-                    imService.send2Friend(client, data)
-                            .subscribe(
-                                    friends -> ackSender.sendAckData(0),
-                                    throwable -> ackSender.sendAckData(((IMError) throwable).getCode())
-                            );
-                }
-        );
-
-        socketIOServer.addEventListener(
-                "get friend list",
-                Object.class,
-                (BaseListener<Object>) (client, data, ackSender) -> {
-                    imService.getFriendList(client)
-                            .subscribe(
-                                    friends -> ackSender.sendAckData(0, friends),
-                                    throwable -> ackSender.sendAckData(((IMError) throwable).getCode())
-                            );
-                }
-        );
-
 
 //        socketIOServer.addEventListener(
 //                IMEvent.LOGIN,
