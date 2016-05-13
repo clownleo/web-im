@@ -14,7 +14,7 @@ public class MessageBean extends EventBean {
     @JsonProperty("to_user")
     public String toUser;
     @JsonProperty("from_group")
-    public String fromGroup;
+    public String group;
     @JsonProperty("date_time")
     public Date dateTime;
     public String type;

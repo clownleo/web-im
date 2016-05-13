@@ -53,7 +53,9 @@ public class RxUtils {
                                     subscriber.onError(ex);
                                 else
                                     subscriber.onNext(null);
-                            }
+                                subscriber.onCompleted();
+                            } else
+                                subscriber.onCompleted();
                         }
 
                         @Override

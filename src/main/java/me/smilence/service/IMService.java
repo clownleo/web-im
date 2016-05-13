@@ -1,7 +1,6 @@
 package me.smilence.service;
 
 import com.lambdaworks.redis.api.sync.RedisCommands;
-import io.netty.util.internal.StringUtil;
 import me.smilence.IMError;
 import me.smilence.IMEvent;
 import me.smilence.commons.utils.AES;
@@ -16,14 +15,11 @@ import com.lambdaworks.redis.api.rx.RedisReactiveCommands;
 import me.smilence.eventbean.*;
 import org.apache.commons.lang3.StringUtils;
 import rx.Observable;
-import rx.Subscriber;
-import rx.internal.schedulers.EventLoopsScheduler;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.IntStream;
 
 import static me.smilence.commons.utils.RxUtils.rxAssert;
 
@@ -110,6 +106,24 @@ public class IMService {
                 .compose(RxUtils.suportNull(IMError.USERNAME_NOT_EXIST));
     }
 
+    public Observable<String> getPublicKey(SocketIOClient client, String username) {
+        return rxRedis.hget("user:" + username, "publicKey")
+                .compose(RxUtils.suportNull(IMError.USERNAME_NOT_EXIST));
+    }
+
+    public Observable<String> getChatKey(SocketIOClient client, String username) {
+        return rxGetUsername(client)
+                .flatMap(myName -> rxRedis.get(myName + ":chat:" + username))
+                .compose(RxUtils.suportNull(IMError.TARGET_NOT_EXIST));
+    }
+
+    public Observable<Boolean> setChatKey(SocketIOClient client, SetChatKeyBean bean) {
+        return rxGetUsername(client)
+                .flatMap(myName -> rxRedis.set(myName + ":chat:" + bean.toUser, bean.chatKey))
+                .compose(RxUtils.suportNull(IMError.USERNAME_NOT_EXIST))
+                .map("OK"::equalsIgnoreCase);
+    }
+
     public Observable<Boolean> updateUserInfo(SocketIOClient client, UpdateUserInfoBean bean) {
         if (client.<String>get("username") != null && userOnline.containsKey(client.<String>get("username")))
             return Observable.create(subscriber -> subscriber.onError(IMError.UNLOGIN));
@@ -156,11 +170,7 @@ public class IMService {
                 .doOnNext(num -> rxAssert(num > 0, IMError.INVALI_REQUEST))
                 .flatMap(aLong -> rxRedis.sadd(username + ":addFriend", bean.toUser))
                 .map(aLong1 -> aLong1 > 0)
-                .doOnNext(aBoolean -> {
-                    if (aBoolean) {
-                        sendMessage(bean).subscribe();
-                    }
-                });
+                .doOnNext(aBoolean -> sendMessage(bean).subscribe());
     }
 
     public Observable<Boolean> addGroup(SocketIOClient client, GroupBean bean) {
@@ -191,32 +201,31 @@ public class IMService {
                                 (aLong, aLong2) -> true
                         );
                     } else return Observable.just(false);
-                });
+                })
+                .doOnNext(aBoolean -> sendMessage(bean));
     }
 
     public Observable<Boolean> joinGroup(SocketIOClient client, MessageBean bean) {
-        return rxRedis.exists("group:" + bean.fromGroup)
-                .doOnNext(num -> rxAssert(num > 0, IMError.TARGET_NOT_EXIST))
-                .flatMap(aLong -> rxGetUsername(client))
-                .flatMap(username -> rxRedis.sadd(username + ":joinGroup", bean.fromGroup))
-                .map(aLong1 -> aLong1 > 0)
-                .doOnNext(aBoolean -> {
-                    if (aBoolean) {
-                        rxRedis.hget("group:" + bean.fromGroup, "owner")
-                                .subscribe(s -> {
-                                    bean.toUser = s;
-                                    bean.fromUser = client.<String>get("username");
-                                    if (bean.fromUser != null)
-                                        sendMessage(bean);
-                                });
-                    }
-                });
+        return Observable
+                .zip(
+                        rxGetUsername(client),
+                        rxRedis.hget("group:" + bean.group, "owner"),
+                        (myName, owner) -> {
+                            bean.fromUser = myName;
+                            bean.toUser = owner;
+                            return bean;
+                        }
+                )
+                .compose(RxUtils.suportNull(IMError.TARGET_NOT_EXIST))
+                .flatMap(bean1 -> rxRedis.sadd(bean1.fromUser + ":joinGroup", bean1.group))
+                .doOnNext(ignore -> sendMessage(bean))
+                .map(l -> l > 0);
     }
 
     public Observable<Boolean> replyOfJoinGroup(SocketIOClient client, MessageBean bean) {
         return Observable
                 .zip(
-                        rxRedis.hget("group:" + bean.fromGroup, "owner"),
+                        rxRedis.hget("group:" + bean.group, "owner"),
                         rxGetUsername(client),
                         (owner, myName) -> {
                             //验证是否群主
@@ -224,17 +233,16 @@ public class IMService {
                             return null;
                         }
                 )
-                .flatMap(ignore -> rxRedis.srem(bean.toUser + ":joinGroup", bean.fromGroup))
+                .flatMap(ignore -> rxRedis.srem(bean.toUser + ":joinGroup", bean.group))
                 .compose(RxUtils.suportNull(IMError.INVALI_REQUEST))
                         //判断是否是为有效的入群回复
                 .doOnNext(num -> rxAssert(num > 0, IMError.INVALI_REQUEST))
                 .flatMap(ignore -> {
                     if ("YES".equalsIgnoreCase(bean.context)) {
-                        return Observable.zip(
-                                rxRedis.sadd(bean.toUser + ":myGroups", bean.fromGroup),
-                                rxRedis.sadd(bean.fromGroup + ":members", bean.toUser),
-                                (r1, r2) -> r1 > 0 && r2 > 0
-                        );
+                        return Observable.merge(
+                                rxRedis.sadd(bean.toUser + ":myGroups", bean.group),
+                                rxRedis.sadd(bean.group + ":members", bean.toUser)
+                        ).all(rs -> rs > 0);
                     } else
                         return Observable.just(false);
                 })
@@ -279,7 +287,7 @@ public class IMService {
                                         super.onTimeout();
                                         subscriber.onError(new TimeoutException());
                                     }
-                                },bean)
+                                }, bean)
                 )
                 .retry((integer, throwable) -> throwable instanceof TimeoutException && integer < 3)
                 .subscribe();

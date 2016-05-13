@@ -224,6 +224,42 @@ public class WebIMBootstrap {
                 }
         );
 
+        socketIOServer.addEventListener(
+                "get chat key",
+                String.class,
+                (BaseListener<String>) (client, username, ackSender) -> {
+                    imService.getChatKey(client, username)
+                            .subscribe(
+                                    chatKey -> ackSender.sendAckData(0, chatKey),
+                                    throwable -> ackSender.sendAckData(((IMError) throwable).getCode())
+                            );
+                }
+        );
+
+        socketIOServer.addEventListener(
+                "set chat key",
+                SetChatKeyBean.class,
+                (BaseListener<SetChatKeyBean>) (client, bean, ackSender) -> {
+                    imService.setChatKey(client, bean)
+                            .subscribe(
+                                    ignore -> ackSender.sendAckData(0),
+                                    throwable -> ackSender.sendAckData(((IMError) throwable).getCode())
+                            );
+                }
+        );
+
+        socketIOServer.addEventListener(
+                "get public key",
+                String.class,
+                (BaseListener<String>) (client, bean, ackSender) -> {
+                    imService.getPublicKey(client, bean)
+                            .subscribe(
+                                    pubKey -> ackSender.sendAckData(0, pubKey),
+                                    throwable -> ackSender.sendAckData(((IMError) throwable).getCode())
+                            );
+                }
+        );
+
 
 //        socketIOServer.addEventListener(
 //                IMEvent.LOGIN,
