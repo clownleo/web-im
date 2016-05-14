@@ -1,6 +1,7 @@
 package me.smilence.service;
 
 import com.lambdaworks.redis.api.sync.RedisCommands;
+import jdk.nashorn.internal.ir.annotations.Ignore;
 import me.smilence.IMError;
 import me.smilence.IMEvent;
 import me.smilence.MessageType;
@@ -180,9 +181,12 @@ public class IMService {
 
     public Observable<Boolean> removeFriend(SocketIOClient client, String friend) {
         return rxGetUsername(client)
-                .flatMap(myName -> rxRedis.srem(myName + ":friends", friend))
-                .doOnNext(num -> rxAssert(num > 0, IMError.TARGET_NOT_EXIST))
-                .map(num -> num > 0);
+                .flatMap(myName -> Observable.zip(
+                        rxRedis.srem(myName + ":friends", friend),
+                        rxRedis.srem(myName + ":friends", friend),
+                        (num1, num2) -> num1 > 0 && num2 > 0
+                ))
+                .doOnNext(success -> rxAssert(success, IMError.TARGET_NOT_EXIST));
     }
 
     public Observable<Boolean> addGroup(SocketIOClient client, GroupBean bean) {
@@ -398,9 +402,12 @@ public class IMService {
                         rxRedis.hget("group:" + bean.group, "owner"),
                         StringUtils::equals
                 ).compose(RxUtils.supportNull(IMError.INVALI_REQUEST))
-                .flatMap(ignore -> rxRedis.srem(bean.group + ":members", bean.member))
-                .doOnNext(num -> rxAssert(num > 0, IMError.TARGET_NOT_EXIST))
-                .map(num -> num > 0);
+                .flatMap(ignore -> Observable.zip(
+                        rxRedis.srem(bean.group + ":members", bean.member),
+                        rxRedis.srem(bean.member + "myGroups", bean.group),
+                        (num1, num2) -> num1 > 0 && num2 > 0
+                ))
+                .doOnNext(success -> rxAssert(success, IMError.TARGET_NOT_EXIST));
     }
 
     public static void main(String[] args) throws InterruptedException {
