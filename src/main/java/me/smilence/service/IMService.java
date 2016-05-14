@@ -180,7 +180,7 @@ public class IMService {
 
     public Observable<Boolean> removeFriend(SocketIOClient client, String friend) {
         return rxGetUsername(client)
-                .flatMap(myName -> rxRedis.srem(myName + "friends", friend))
+                .flatMap(myName -> rxRedis.srem(myName + ":friends", friend))
                 .doOnNext(num -> rxAssert(num > 0, IMError.TARGET_NOT_EXIST))
                 .map(num -> num > 0);
     }

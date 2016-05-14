@@ -114,7 +114,7 @@ var clientIO = function () {
         REMOVE_GROUP_MEMBER : "remove group member"
     };
     var newStamp = function () {
-        return client.rxEmit("new stamp");
+        return client.rxEmit(IMEVENT.NEW_STAMP);
     };
     var setAndGetChatKey = function (message) {
         if (!chatEncryptKeyArr[message.to_user]) {
@@ -122,7 +122,7 @@ var clientIO = function () {
             return getSbPublicKey(message.to_user)
                 .map((publicKey) => cryptico.encrypt(chatKey, publicKey).cipher)
                 .flatMap(chatKey_encrypt =>
-                    client.rxEmit("set chat key", {to_user: message.to_user, chat_key: chatKey_encrypt})
+                    client.rxEmit(IMEVENT.SET_CHAT_KEY, {to_user: message.to_user, chat_key: chatKey_encrypt})
                         .doOnNext(function () {
                             chatEncryptKeyArr[message.to_user] = chatKey;
                         }))
@@ -141,7 +141,7 @@ var clientIO = function () {
         if(GettingChatDecryptKeyArr[fromUsername])
             return GettingChatDecryptKeyArr[fromUsername];
 
-        return GettingChatDecryptKeyArr[fromUsername] = client.rxEmit("get chat key", fromUsername)
+        return GettingChatDecryptKeyArr[fromUsername] = client.rxEmit(IMEVENT.GET_CHAT_KEY, fromUsername)
             .map(function (chatKey_encrypt) {
                 if(chatDecryptKeyArr[fromUsername])
                     return chatDecryptKeyArr[fromUsername];
@@ -156,7 +156,7 @@ var clientIO = function () {
         if (publicKeyArr[username]) {
             return Rx.Observable.just(publicKeyArr[username]);
         }
-        return client.rxEmit("get public key", username)
+        return client.rxEmit(IMEVENT.GET_PUBLIC_KEY, username)
             .doOnNext(function (key) {
                 publicKeyArr[username] = key;
             });
@@ -194,7 +194,7 @@ var clientIO = function () {
             })
             .flatMap(function (data) {
                 //TODO 将注册信息发送给服务器
-                return client.rxEmit("register", data)
+                return client.rxEmit(IMEVENT.REGISTER, data)
                     .doOnNext(function () {
                         console.log("register success");
                         console.log("username:" + data.username);
@@ -206,7 +206,7 @@ var clientIO = function () {
     };
     var login = function (inputUser) {
         return Rx.Observable.zip(
-            client.rxEmit("get key encrypted", inputUser.username),
+            client.rxEmit(IMEVENT.GET_KET_ENCRYPTED, inputUser.username),
             newStamp(),
             function (enk, stamp) {
                 console.log("stamp:" + stamp);
@@ -219,7 +219,7 @@ var clientIO = function () {
         )
             .flatMap(function (x) {
                 console.log(x);
-                return client.rxEmit("login", {username: inputUser.username, signature: x})
+                return client.rxEmit(IMEVENT.LOGIN, {username: inputUser.username, signature: x})
                     .doOnNext(function () {
                         console.log("login success");
                     })
@@ -227,7 +227,7 @@ var clientIO = function () {
     };
     var setPwdBck = function (inputUser) {
         return Rx.Observable.zip(
-            client.rxEmit("get key encrypted", inputUser.username),
+            client.rxEmit(IMEVENT.GET_KET_ENCRYPTED, inputUser.username),
             newStamp(),
             function (enk, stamp) {
                 var key = CryptoJS.decryptAES4Java(enk, inputUser.pwd);
@@ -240,7 +240,7 @@ var clientIO = function () {
         )
             .flatMap(function (x) {
                 console.log(x);
-                return client.rxEmit("set key bck", x)
+                return client.rxEmit(IMEVENT.SET_KEY_BCK, x)
                     .doOnNext(function () {
                         console.log("set key bck success");
                         privateKey = null;
@@ -249,7 +249,7 @@ var clientIO = function () {
     };
     var setNewPwd = function (inputUser) {
         return Rx.Observable.zip(
-            client.rxEmit("get key encrypted bck", inputUser.username),
+            client.rxEmit(IMEVENT.GET_KET_ENCRYPTED_bck, inputUser.username),
             newStamp(),
             function (enKeyBck, stamp) {
                 var key = CryptoJS.decryptAES4Java(enKeyBck, inputUser.pwd_bck);
@@ -262,7 +262,7 @@ var clientIO = function () {
         )
             .flatMap(function (x) {
                 console.log(x);
-                return client.rxEmit("reset key", x)
+                return client.rxEmit(IMEVENT.RESET_KEY, x)
                     .doOnNext(function () {
                         console.log("reset key success");
                         privateKey = null;
@@ -272,18 +272,18 @@ var clientIO = function () {
 
     var logout = function () {
         privateKey = null;
-        client.rxEmit("logout").subscribe();
+        client.rxEmit(IMEVENT.LOGOUT).subscribe();
     };
 
     var addFriend = function (message) {
-        return client.rxEmit("add friend", message)
+        return client.rxEmit(IMEVENT.ADD_FRIEND, message)
             .doOnNext(function () {
                 console.log("add friend finish");
             });
     };
 
     var replyAddFriend = function (message) {
-        return client.rxEmit("reply of add friend", message)
+        return client.rxEmit(IMEVENT.REPLY_OF_ADD_FRIEND, message)
             .doOnNext(function () {
                 console.log("add friend success");
             })
@@ -293,7 +293,7 @@ var clientIO = function () {
         return setAndGetChatKey(message)
             .flatMap(function (chatKey) {
                 message.context = CryptoJS.encryptAES4Java(message.context, chatKey);
-                return client.rxEmit("send to friend", message)
+                return client.rxEmit(IMEVENT.SEND_TO_FRIEND, message)
                     .doOnNext(function () {
                         console.log(message);
                         console.log("send success");
@@ -310,7 +310,7 @@ var clientIO = function () {
 
     var onMsg = function () {
         return client
-            .rxOn("msg_sync")
+            .rxOn(IMEVENT.MSG_SYNC)
             .flatMap(function (message) {
                 switch (message.type) {
                     case messageType.CHAT_MESSAGE:
@@ -322,39 +322,39 @@ var clientIO = function () {
     };
 
     var getFriendsList = function () {
-        return client.rxEmit("get friend list");
+        return client.rxEmit(IMEVENT.GET_FRIENDS);
     };
 
     var addGroup = function(group){
-        return client.rxEmit("add group" , group);
+        return client.rxEmit(IMEVENT.ADD_FRIEND , group);
     };
 
     var joinGroup = function (group) {
-        return client.rxEmit("join group" , group);
+        return client.rxEmit(IMEVENT.JOIN_GROUP , group);
     };
 
     var replyOfJoinGroup = function(message){
-        return client.rxEmit("reply of join group" , message);
+        return client.rxEmit(IMEVENT.REPLY_OF_JOIN_GROUP , message);
     };
 
     var getMembersOfGroup = function(groupName){
-        return client.rxEmit("get group members" , groupName);
+        return client.rxEmit(IMEVENT.GET_GROUP_MEMBERS , groupName);
     };
 
-    var deleteFriend = function() {
-        return client.rxEmit("remove friend");
+    var deleteFriend = function(friendName) {
+        return client.rxEmit(IMEVENT.REMOVE_FRIEND , friendName);
     };
 
     var removeMemberOfGroup = function(removeGroupMember){
-        return client.rxEmit("remove group member" , removeGroupMember);
+        return client.rxEmit(IMEVENT.REMOVE_GROUP_MEMBER , removeGroupMember);
     };
 
     var exitGroup = function(groupName){
-        return client.rxEmit("exit group" , groupName);
+        return client.rxEmit(IMEVENT.EXIT_GROUP , groupName);
     };
 
     var getListOfGroups = function(){
-        return client.rxEmit("get groups");
+        return client.rxEmit(IMEVENT.GET_GROUPS);
     };
 
     return {
@@ -371,6 +371,7 @@ var clientIO = function () {
         addFriend: addFriend,
         replyAddFriend: replyAddFriend,
         getFriendsList: getFriendsList,
+        deleteFriend:deleteFriend,
         removeMemberOfGroup:removeMemberOfGroup,
         exitGroup:exitGroup,
         getListOfGroups:getListOfGroups,
@@ -391,14 +392,14 @@ client.onMsg().subscribe(data => console.log(data));
 //client.login({username: 'abc', pwd: 'abc'}).subscribe(()=>{},(error)=>console.log("error:"+error.code));
 //client.login({username: 'abc', pwd: '123'}).subscribe(()=>{},(error)=>console.log("error:"+error.code));
 
-//client.addFriend({from_user:'abc' , to_user:'kiss'}).subscribe(()={} , (error)=>{});
-//client.replyAddFriend({from_user:'kiss' , to_user:'abc',context:'YES'}).subscribe(()=>{},(error)=>{});
+//client.addFriend({from_user:'abc' , to_user:'kiss'}).subscribe();
+//client.replyAddFriend({from_user:'kiss' , to_user:'abc',context:'YES'}).subscribe();
 
 //client.register(true,{username:"kiss",pwd:"abc"}).subscribe(()=>{},(error)=>{});
 //client.login({username: 'kiss', pwd: 'abc'}).subscribe(()=>{},(error)=>console.log("error:"+error.code));
 
 //client.getFriendsList().subscribe((data)=>{console.log(data)})
-
+//client.deleteFriend('abc').subscribe((data)=>console.log(data))
 //client.getSbPublicKey('abc').subscribe((data)=>{console.log(data)})
 
 //client.sendMessage({from_user:'abc',to_user:'kiss',context:'你好'}).subscribe((data)=>{console.log(data)})
