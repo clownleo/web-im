@@ -93,7 +93,7 @@ public class WebIMBootstrap {
 //            imService.channelInit(socketIOClient, packet);
 //        });
         socketIOServer.addEventListener(
-                "new stamp" ,
+                IMEvent.NEW_STAMP ,
                 Object.class,
                 (BaseListener<Object>) (client, data, ackSender) -> {
                     imService.newStamp(client)
@@ -129,7 +129,7 @@ public class WebIMBootstrap {
         );
 
         socketIOServer.addEventListener(
-                "set key bck",
+                IMEvent.SET_KEY_BCK,
                 KeyBckBean.class,
                 (BaseListener<KeyBckBean>) (client, data, ackSender) -> {
                     imService.setKeyBak(client, data)
@@ -141,7 +141,7 @@ public class WebIMBootstrap {
         );
 
         socketIOServer.addEventListener(
-                "reset key",
+                IMEvent.RESET_KEY,
                 ResetKeyEncBean.class,
                 (BaseListener<ResetKeyEncBean>) (client, data, ackSender) -> {
                     imService.resetKeyEncrypted(client, data)
@@ -153,7 +153,7 @@ public class WebIMBootstrap {
         );
 
         socketIOServer.addEventListener(
-                "get key encrypted",
+                IMEvent.GET_KET_ENCRYPTED,
                 String.class,
                 (BaseListener<String>) (client, data, ackSender) -> {
                     imService.getKeyEncrypted(client, data)
@@ -165,7 +165,7 @@ public class WebIMBootstrap {
         );
 
         socketIOServer.addEventListener(
-                "get key encrypted bck",
+                IMEvent.GET_KET_ENCRYPTED_bck,
                 String.class,
                 (BaseListener<String>) (client, data, ackSender) -> {
                     imService.getKeyEncryptedBck(client, data)
@@ -177,7 +177,7 @@ public class WebIMBootstrap {
         );
 
         socketIOServer.addEventListener(
-                "add friend",
+                IMEvent.ADD_FRIEND,
                 MessageBean.class,
                 (BaseListener<MessageBean>) (client, data, ackSender) -> {
                     imService.addFriend(client, data)
@@ -189,7 +189,7 @@ public class WebIMBootstrap {
         );
 
         socketIOServer.addEventListener(
-                "reply of add friend",
+                IMEvent.REPLY_OF_ADD_FRIEND,
                 MessageBean.class,
                 (BaseListener<MessageBean>) (client, data, ackSender) -> {
                     imService.replyOfAddFriend(client, data)

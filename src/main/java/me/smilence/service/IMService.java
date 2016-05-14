@@ -195,8 +195,13 @@ public class IMService {
                     group.owner = username;
                     return group;
                 })
-                .flatMap(group -> rxRedis.hmset("group:" + group.groupName, group.getMap()))
-                .map("OK"::equalsIgnoreCase);
+                .flatMap(group ->
+                        Observable.zip(
+                                rxRedis.hmset("group:" + group.groupName, group.getMap()),
+                                rxRedis.sadd(group.groupName + ":members", group.owner),
+                                (rs, num) -> "OK".equals(rs) && num > 0
+                    )
+                );
     }
 
     public Observable<Boolean> replyOfAddFriend(SocketIOClient client, MessageBean bean) {
