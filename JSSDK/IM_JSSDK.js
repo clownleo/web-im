@@ -19,21 +19,21 @@ var utils = {
 /**
  * socket.io-client Rx化支持
  */
-(function(){
+(function () {
     var old_io = io;
-    io = function(){
-        var args=Array.prototype.slice.call(arguments, 0);
+    io = function () {
+        var args = Array.prototype.slice.call(arguments, 0);
         var client = old_io.apply(this, args);
 
-        client.rxEmit = function(){
-            var args=Array.prototype.slice.call(arguments, 0);
-            return Rx.Observable.create(function(subscriber){
-                args.push(function(code, data){
+        client.rxEmit = function () {
+            var args = Array.prototype.slice.call(arguments, 0);
+            return Rx.Observable.create(function (subscriber) {
+                args.push(function (code, data) {
                     if (code != 0) {
                         console.log("RxEmit error:" + code + ",data:" + data);
                         subscriber.onError({
-                            code:code,
-                            data:data
+                            code: code,
+                            data: data
                         });
                         return;
                     }
@@ -47,15 +47,14 @@ var utils = {
 
         var eventListening = {};
 
-        client.rxOn = function(event){
-            var args=Array.prototype.slice.call(arguments, 0);
-            if(eventListening[event])
+        client.rxOn = function (event) {
+            var args = Array.prototype.slice.call(arguments, 0);
+            if (eventListening[event])
                 return eventListening[event];
 
-            return eventListening[event] = Rx.Observable.create(function(subscriber){
-                client.on(event, function(data, ack){
+            return eventListening[event] = Rx.Observable.create(function (subscriber) {
+                client.on(event, function (data, ack) {
                     subscriber.onNext(data);
-                    subscriber.onCompleted();
                     ack();
                 });
             });
@@ -63,6 +62,7 @@ var utils = {
 
         return client;
     }
+
 })();
 
 
@@ -75,17 +75,63 @@ var clientIO = function () {
     var chatDecryptKeyArr = [];
     var publicKeyArr = [];
     var randomURL = "https://www.random.org/integers/?num=10&min=1&max=1000000000&col=10&base=16&format=plain&rnd=new";
+    var messageType = {
+        CHAT_MESSAGE : 1,
+        ADD_FRIEND : 2,
+        REPLY_ADD_FRIEND : 3,
+        JOIN_GROUP : 4,
+        REPLY_JOIN_GROUP : 5,
+        DELETE_FRIEND : 6,
+        DELETE_GROUP_MEMBER : 7,
+        NOTIFICATION : 8
+        };
     var newStamp = function () {
         return client.rxEmit("new stamp");
     };
-    var setChatKey = function(message){
-        return client.rxEmit("" , message);
+    var setAndGetChatKey = function (message) {
+        if (!chatEncryptKeyArr[message.to_user]) {
+            var chatKey = SHA256(privateKey + message.to_user);
+            return getSbPublicKey(message.to_user)
+                .map((publicKey) => cryptico.encrypt(chatKey, publicKey).cipher)
+                .flatMap(chatKey_encrypt =>
+                    client.rxEmit("set chat key", {to_user: message.to_user, chat_key: chatKey_encrypt})
+                        .doOnNext(function () {
+                            chatEncryptKeyArr[message.to_user] = chatKey;
+                        }))
+                .map(ignore => chatKey);
+        } else {
+            return Rx.Observable.just(chatEncryptKeyArr[message.to_user]);
+        }
+
     };
-    var getChatKey = function(message){
-        return client.rxEmit("" , message);
+
+    var GettingChatDecryptKeyArr = {};
+    var getChatKey = function (fromUsername) {
+        if (chatDecryptKeyArr[fromUsername]) {
+            return Rx.Observable.just(chatDecryptKeyArr[fromUsername]);
+        }
+        if(GettingChatDecryptKeyArr[fromUsername])
+            return GettingChatDecryptKeyArr[fromUsername];
+
+        return GettingChatDecryptKeyArr[fromUsername] = client.rxEmit("get chat key", fromUsername)
+            .map(function (chatKey_encrypt) {
+                if(chatDecryptKeyArr[fromUsername])
+                    return chatDecryptKeyArr[fromUsername];
+                var RSAKey = cryptico.generateRSAKey(privateKey, 1024);
+                var chatKey = cryptico.decrypt(chatKey_encrypt, RSAKey).plaintext;
+                chatDecryptKeyArr[fromUsername] = chatKey;
+                return chatKey;
+            }).doOnNext(ignore => delete GettingChatDecryptKeyArr[fromUsername]);
     };
-    var getSbPublicKey = function(username){
-        return client.rxEmit("" , username);
+    var getSbPublicKey = function (username) {
+        //TODO 以key_encrypt为密钥进行AES解密
+        if (publicKeyArr[username]) {
+            return Rx.Observable.just(publicKeyArr[username]);
+        }
+        return client.rxEmit("get public key", username)
+            .doOnNext(function (key) {
+                publicKeyArr[username] = key;
+            });
     };
     var register = function (localhostRan, user) {
         var stream;
@@ -120,7 +166,7 @@ var clientIO = function () {
             })
             .flatMap(function (data) {
                 //TODO 将注册信息发送给服务器
-                return client.rxEmit("register" , data)
+                return client.rxEmit("register", data)
                     .doOnNext(function () {
                         console.log("register success");
                         console.log("username:" + data.username);
@@ -145,8 +191,8 @@ var clientIO = function () {
         )
             .flatMap(function (x) {
                 console.log(x);
-                return client.rxEmit("login" , {username:inputUser.username,signature:x})
-                    .doOnNext(function(){
+                return client.rxEmit("login", {username: inputUser.username, signature: x})
+                    .doOnNext(function () {
                         console.log("login success");
                     })
             });
@@ -161,13 +207,13 @@ var clientIO = function () {
                 var key_encrypted_bck = CryptoJS.encryptAES4Java(key, inputUser.pwd_bck);
                 //TODO 设置密保是如何对称加密相应的传输内容
                 var encryptStamp = CryptoJS.encryptAES4Java(stamp, key_sign);
-                return {username:inputUser.username,key_encrypted_bck: key_encrypted_bck, signature: encryptStamp};
+                return {username: inputUser.username, key_encrypted_bck: key_encrypted_bck, signature: encryptStamp};
             }
         )
             .flatMap(function (x) {
                 console.log(x);
-                return client.rxEmit("set key bck" , x)
-                    .doOnNext(function(){
+                return client.rxEmit("set key bck", x)
+                    .doOnNext(function () {
                         console.log("set key bck success");
                         privateKey = null;
                     })
@@ -183,13 +229,13 @@ var clientIO = function () {
                 var key_encrypted = CryptoJS.encryptAES4Java(key, inputUser.newPwd);
                 //TODO 重置密码是如何对称加密相应的传输内容
                 var encryptStamp = CryptoJS.encryptAES4Java(stamp, key_sign);
-                return {username:inputUser.username,key_encrypted: key_encrypted, signature: encryptStamp};
+                return {username: inputUser.username, key_encrypted: key_encrypted, signature: encryptStamp};
             }
         )
             .flatMap(function (x) {
                 console.log(x);
-                return client.rxEmit("reset key" , x)
-                    .doOnNext(function(){
+                return client.rxEmit("reset key", x)
+                    .doOnNext(function () {
                         console.log("reset key success");
                         privateKey = null;
                     })
@@ -198,112 +244,74 @@ var clientIO = function () {
 
     var logout = function () {
         privateKey = null;
-        //TODO 退出
+        client.rxEmit("logout").subscribe();
     };
 
-    var addFriend = function(message){
-        return client.rxEmit("add friend",message)
-                    .doOnNext(function(){
+    var addFriend = function (message) {
+        return client.rxEmit("add friend", message)
+            .doOnNext(function () {
                 console.log("add friend finish");
             });
     };
 
-    var replyAddFriend = function(message){
-        return client.rxEmit("reply of add friend" , message)
-                    .doOnNext(function(){
-                    console.log("add friend success");
+    var replyAddFriend = function (message) {
+        return client.rxEmit("reply of add friend", message)
+            .doOnNext(function () {
+                console.log("add friend success");
             })
     };
 
     var sendMessage = function (message) {
-        var stream;
-        var chatKey = SHA256(privateKey + message.to_uid);
-        //TODO 确认聊天密钥已在服务器有存储
-        if (!chatEncryptKeyArr[message.to_uid]) {
-            stream = Rx.Observable
-                .just(function () {
-                    var recvPublicKey = publicKeyArr[message.to_uid];
-                    if (recvPublicKey) {
-                        encrypChatKey = cryptico.encrypt(chatKey, recvPublicKey);
-                        return encrypChatKey;
-                    } else {
-                        //TODO 从服务器获得接收方公钥，加密聊天密钥
-                        $.ajax({
-                            url: "",
-                            success: function (data) {
-                                setPublicKeyArr(message.to_uid, data.publicKey);
-                                encrypChatKey = cryptico.encrypt(chatKey, data.publicKey);
-                                return encrypChatKey;
-                            }
-                        })
-                    }
-                })
-                .map(function (encrypChatKey) {
-                    //TODO 将加密后的聊天密钥传给服务器
-                    $.ajax({
-                        url: ""
-                    }).promise();
-                })
-                .map(() => {
-                    chatEncryptKeyArr[message.to_uid] = true;
-                })
-                .just(chatKey);
-        } else {
-            stream = Rx.Observable.just(chatKey);
-        }
-        return stream
-            .map(function (chatAESKey) {
-                message.context = cryptico.encryptAESCBC(message.chat, MD5(chatAESKey));
+        return setAndGetChatKey(message)
+            .flatMap(function (chatKey) {
+                message.context = CryptoJS.encryptAES4Java(message.context, chatKey);
+                return client.rxEmit("send to friend", message)
+                    .doOnNext(function () {
+                        console.log(message);
+                        console.log("send success");
+                    })
             })
-            .doOnNext(function () {
-                //TODO 将message发送给服务器
+    };
+    var decryptMessage = function (message) {
+        return getChatKey(message.from_user)
+            .map(function (chatKey) {
+                message.context = CryptoJS.decryptAES4Java(message.context, chatKey);
+                return message;
+            })
+    };
+
+    var onMsg = function () {
+        return client
+            .rxOn("msg_sync")
+            .flatMap(function (message) {
+                switch (message.type) {
+                    case messageType.CHAT_MESSAGE:
+                        return decryptMessage(message);
+                    default :
+                        return Rx.Observable.just(message);
+                }
             });
     };
-    var recvMessage = function (message) {
-        var chatKey = chatDecryptKeyArr[message.from_gid];
-        var stream;
-        if (!chatKey) {
-            stream = Rx.Observable
-                .fromPromise(
-                //TODO 向服务器询问密钥
-                $.ajax({
-                    url: ""
-                }).promise()
-            )
-                .map(function (enKey) {
-                    var RSAKey = cryptico.generateRSAKey(privateKey, 1024);
-                    chatKey = cryptico.decrypt(enKey, RSAKey);
-                    chatDecryptKeyArr[message.from_gid] = chatKey;
-                })
-        } else {
-            stream = Rx.Observable.just(chatKey);
-        }
-        return stream
-            .map(function () {
-                message.context = cryptico.decryptAESCBC(message.context, MD5(chatKey));
-            })
-            .just(message);
-    };
 
-    var onMsg = function(){
-        return client.rxOn("msg_sync");
-    };
-
-    var getFriendsList = function(){
+    var getFriendsList = function () {
         return client.rxEmit("get friend list");
     };
 
+    var addGroup = function(){
+
+    };
+
     return {
+        messageType: messageType,
         register: register,
         login: login,
         setPwdBck: setPwdBck,
         setNewPwd: setNewPwd,
-        logout:logout,
-        sendMessage: sendMessage,
-        recvMessage: recvMessage,
+        sendMessage:sendMessage,
+        logout: logout,
         addFriend: addFriend,
         replyAddFriend: replyAddFriend,
-        getFriendsList:getFriendsList,
+        getFriendsList: getFriendsList,
         onMsg: onMsg
     }
 };
@@ -324,3 +332,7 @@ client.onMsg().subscribe(data => console.log(data));
 //client.login({username: 'kiss', pwd: 'abc'}).subscribe(()=>{},(error)=>console.log("error:"+error.code));
 
 //client.getFriendsList().subscribe((data)=>{console.log(data)})
+
+//client.getSbPublicKey('abc').subscribe((data)=>{console.log(data)})
+
+//client.sendMessage({from_user:'abc',to_user:'kiss',context:'你好'}).subscribe((data)=>{console.log(data)})

@@ -17,6 +17,6 @@ public class MessageBean extends EventBean {
     public String group;
     @JsonProperty("date_time")
     public Date dateTime;
-    public String type;
+    public int type;
     public String context;
 }

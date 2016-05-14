@@ -3,6 +3,7 @@ package me.smilence.service;
 import com.lambdaworks.redis.api.sync.RedisCommands;
 import me.smilence.IMError;
 import me.smilence.IMEvent;
+import me.smilence.MessageType;
 import me.smilence.commons.utils.AES;
 import me.smilence.commons.utils.RxUtils;
 import me.smilence.entity.Group;
@@ -73,7 +74,7 @@ public class IMService {
 
         boolean result = client.<String>get("username") != null &&
                 userOnline.remove(client.<String>get("username")) != null;
-        client.del("client");
+        client.del("username");
         return Observable.just(result);
     }
 
@@ -113,7 +114,7 @@ public class IMService {
 
     public Observable<String> getChatKey(SocketIOClient client, String username) {
         return rxGetUsername(client)
-                .flatMap(myName -> rxRedis.get(myName + ":chat:" + username))
+                .flatMap(myName -> rxRedis.get(username + ":chat:" + myName))
                 .compose(RxUtils.suportNull(IMError.TARGET_NOT_EXIST));
     }
 
@@ -131,14 +132,16 @@ public class IMService {
     }
 
     public Observable<Boolean> send2Friend(SocketIOClient client, MessageBean bean) {
-        String username = client.<String>get("username");
-        return rxRedis.sismember(username + ":friends", bean.toUser)
+        bean.type = MessageType.CHAT_MESSAGE;
+        return rxGetUsername(client)
+                .flatMap(username -> rxRedis.sismember(username + ":friends", bean.toUser))
                 .doOnNext(isMem -> rxAssert(isMem, IMError.INVALI_REQUEST))
                 .flatMap(ignore -> sendMessage(bean));
     }
 
     private Observable<Boolean> sendMessage(MessageBean bean) {
         bean.dateTime = new Date();
+        System.out.println(JSON.toJSONString(bean));
         return rxRedis.exists("user:" + bean.toUser)
                 .doOnNext(num -> rxAssert(num > 0, IMError.TARGET_NOT_EXIST))
                 .map(ignore -> userOnline.get(bean.toUser))
@@ -165,15 +168,16 @@ public class IMService {
     }
 
     public Observable<Boolean> addFriend(SocketIOClient client, MessageBean bean) {
-        String username = client.<String>get("username");
+        bean.type = MessageType.ADD_FRIEND;
         return rxRedis.exists("user:" + bean.toUser)
                 .doOnNext(num -> rxAssert(num > 0, IMError.INVALI_REQUEST))
-                .flatMap(aLong -> rxRedis.sadd(username + ":addFriend", bean.toUser))
+                .flatMap(ignore -> rxGetUsername(client))
+                .flatMap(username -> rxRedis.sadd(username + ":addFriend", bean.toUser))
                 .map(aLong1 -> aLong1 > 0)
                 .doOnNext(aBoolean -> sendMessage(bean).subscribe());
     }
 
-    public Observable<Boolean> addGroup(SocketIOClient client, GroupBean bean) {
+    public Observable<Boolean> addGroup(SocketIOClient client, GroupBeaddan bean) {
 
         return rxRedis.exists("group:" + bean.groupName)
                 .doOnNext(isExist -> rxAssert(isExist <= 0, IMError.GROUP_NAME_ALREADY_EXIST))
@@ -190,10 +194,11 @@ public class IMService {
     public Observable<Boolean> replyOfAddFriend(SocketIOClient client, MessageBean bean) {
         String username = client.<String>get("username");
 
+        bean.type = MessageType.REPLY_ADD_FRIEND;
         return rxRedis.srem(bean.toUser + ":addFriend", username)
                 .compose(RxUtils.suportNull(IMError.INVALI_REQUEST))
                 .doOnNext(num -> rxAssert(num > 0, IMError.INVALI_REQUEST))
-                .flatMap(aLong1 -> {
+                .flatMap(ignore -> {
                     if ("YES".equalsIgnoreCase(bean.context)) {
                         return Observable.zip(
                                 rxRedis.sadd(username + ":friends", bean.toUser),
@@ -202,7 +207,7 @@ public class IMService {
                         );
                     } else return Observable.just(false);
                 })
-                .doOnNext(aBoolean -> sendMessage(bean));
+                .doOnNext(aBoolean -> sendMessage(bean).subscribe());
     }
 
     public Observable<Boolean> joinGroup(SocketIOClient client, MessageBean bean) {
@@ -218,7 +223,7 @@ public class IMService {
                 )
                 .compose(RxUtils.suportNull(IMError.TARGET_NOT_EXIST))
                 .flatMap(bean1 -> rxRedis.sadd(bean1.fromUser + ":joinGroup", bean1.group))
-                .doOnNext(ignore -> sendMessage(bean))
+                .doOnNext(ignore -> sendMessage(bean).subscribe())
                 .map(l -> l > 0);
     }
 
@@ -242,11 +247,12 @@ public class IMService {
                         return Observable.merge(
                                 rxRedis.sadd(bean.toUser + ":myGroups", bean.group),
                                 rxRedis.sadd(bean.group + ":members", bean.toUser)
-                        ).all(rs -> rs > 0);
+                        ).all(rs -> rs > 0
+                        );
                     } else
                         return Observable.just(false);
                 })
-                .doOnNext(aBoolean -> sendMessage(bean));
+                .doOnNext(aBoolean -> sendMessage(bean).subscribe());
     }
 
     public Observable<Boolean> removeFriend(SocketIOClient client, String username) {
@@ -302,7 +308,8 @@ public class IMService {
                 .doOnNext(list -> redis.ltrim("msgQueue", list.size(), -1))
                 .flatMap(Observable::from)
                 .map(s -> JSON.<MessageBean>parseObject(s, MessageBean.class))
-                .doOnNext(this::sendMessage)
+                .doOnNext((bean) -> sendMessage(bean).subscribe())
+                .doOnError(Throwable::printStackTrace)
                 .doOnError(throwable -> restartMsgQueue())
                 .subscribe();
     }
@@ -323,16 +330,19 @@ public class IMService {
                 .filter(StringUtils::isNoneEmpty)
                 .doOnNext(username -> {
                     List<String> list = redis.lrange("msg:" + username, 0, 999);
-                    redis.ltrim("msg:" + username, list.size(), -1);
-                    redis.rpush("msgQueue", list.toArray(new String[list.size()]));
+                    if (list.size() > 0) {
+                        redis.ltrim("msg:" + username, list.size(), -1);
+                        redis.rpush("msgQueue", list.toArray(new String[list.size()]));
+                    }
                 })
+                .doOnError(Throwable::printStackTrace)
                 .doOnError(throwable -> restartOfflineQueue())
                 .subscribe();
     }
 
     private void restartOfflineQueue() {
         offlineQueueStarted = false;
-        startMsgQueue();
+        startOfflineQueue();
     }
 
     public static void main(String[] args) throws InterruptedException {
