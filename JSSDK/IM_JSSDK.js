@@ -297,8 +297,36 @@ var clientIO = function () {
         return client.rxEmit("get friend list");
     };
 
-    var addGroup = function(){
+    var addGroup = function(group){
+        return client.rxEmit("add group" , group);
+    };
 
+    var joinGroup = function (group) {
+        return client.rxEmit("join group" , group);
+    };
+
+    var replyOfJoinGroup = function(message){
+        return client.rxEmit("reply of join group" , message);
+    };
+
+    var getMembersOfGroup = function(groupName){
+        return client.rxEmit("get group members" , groupName);
+    };
+
+    var deleteFriend = function() {
+        return client.rxEmit("remove friend");
+    };
+
+    var removeMemberOfGroup = function(removeGroupMember){
+        return client.rxEmit("remove group member" , removeGroupMember);
+    };
+
+    var exitGroup = function(groupName){
+        return client.rxEmit("exit group" , groupName);
+    };
+
+    var getListOfGroups = function(){
+        return client.rxEmit("get groups");
     };
 
     return {
@@ -307,12 +335,19 @@ var clientIO = function () {
         login: login,
         setPwdBck: setPwdBck,
         setNewPwd: setNewPwd,
-        sendMessage:sendMessage,
         logout: logout,
+
+        sendMessage:sendMessage,
+        onMsg: onMsg,
+
         addFriend: addFriend,
         replyAddFriend: replyAddFriend,
         getFriendsList: getFriendsList,
-        onMsg: onMsg
+
+        addGroup:addGroup,
+        joinGroup:joinGroup,
+        replyOfJoinGroup:replyOfJoinGroup,
+        getMembersOfGroup:getMembersOfGroup
     }
 };
 
@@ -336,3 +371,9 @@ client.onMsg().subscribe(data => console.log(data));
 //client.getSbPublicKey('abc').subscribe((data)=>{console.log(data)})
 
 //client.sendMessage({from_user:'abc',to_user:'kiss',context:'你好'}).subscribe((data)=>{console.log(data)})
+
+
+//client.addGroup({groupName:'smilence',info:'第一个群'}).subscribe();
+//client.joinGroup({from_user:'kiss',to_user:'abc',group:'smilence'}).subscribe();
+//client.replyOfJoinGroup({group:'smilence',to_user:'kiss',context:'YES'}).subscribe();
+//client.getMembersOfGroup('smilence').subscribe();

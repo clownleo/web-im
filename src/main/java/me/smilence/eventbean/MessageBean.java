@@ -13,7 +13,7 @@ public class MessageBean extends EventBean {
     public String fromUser;
     @JsonProperty("to_user")
     public String toUser;
-    @JsonProperty("from_group")
+    @JsonProperty("group")
     public String group;
     @JsonProperty("date_time")
     public Date dateTime;

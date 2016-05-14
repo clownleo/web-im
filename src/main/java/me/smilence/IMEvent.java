@@ -15,7 +15,7 @@ public class IMEvent {
         SET_KEY_BCK = "set key bck",
         RESET_KEY = "reset key",
         ADD_FRIEND = "add friend",
-        REPLY_OF_ADD_FRIEND = "reply of add friend",
+        REPLY_OF_ADD_FRIEND = "reply of add friend";
 
 
 }

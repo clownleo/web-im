@@ -201,7 +201,7 @@ public class WebIMBootstrap {
         );
 
         socketIOServer.addEventListener(
-                "remove friend ",
+                "remove friend",
                 String.class,
                 (BaseListener<String>) (client, data, ackSender) -> {
                     imService.removeFriend(client, data)
