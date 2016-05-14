@@ -88,10 +88,6 @@ public class WebIMBootstrap {
     }
 
     public void bindEvent() {
-//        socketIOServer.addEventListener(IMEvent.CHANNEL_INIT, ChannelInitPacket.class, (socketIOClient, packet, ackRequest) -> {
-//            socketIOClient.sendEvent(IMEvent.ACK, new AckPacket(packet.rid, IMEvent.CHANNEL_INIT));
-//            imService.channelInit(socketIOClient, packet);
-//        });
         socketIOServer.addEventListener(
                 IMEvent.NEW_STAMP ,
                 Object.class,
@@ -360,24 +356,47 @@ public class WebIMBootstrap {
                         )
         );
 
+        socketIOServer.addEventListener(
+                IMEvent.GET_USER_INFO,
+                String.class,
+                (BaseListener<String>) (client, data, ackSender) ->
+                        imService.getUserInfo(client, data).subscribe(
+                                info -> ackSender.sendAckData(0, info),
+                                throwable -> ackSender.sendAckData(((IMError) throwable).getCode())
+                        )
+        );
+
+        socketIOServer.addEventListener(
+                IMEvent.GET_GROUP_INFO,
+                String.class,
+                (BaseListener<String>) (client, data, ackSender) ->
+                        imService.getGroupInfo(client, data).subscribe(
+                                info -> ackSender.sendAckData(0, info),
+                                throwable -> ackSender.sendAckData(((IMError) throwable).getCode())
+                        )
+        );
+
+        socketIOServer.addEventListener(
+                IMEvent.UPDATE_USER_INFO,
+                Object.class,
+                (BaseListener<Object>) (client, data, ackSender) ->
+                        imService.updateUserInfo(client, data).subscribe(
+                                ignore -> ackSender.sendAckData(0),
+                                throwable -> ackSender.sendAckData(((IMError) throwable).getCode())
+                        )
+        );
+
+        socketIOServer.addEventListener(
+                IMEvent.UPDATE_GROUP_INFO,
+                UpdateGroupInfoBean.class,
+                (BaseListener<UpdateGroupInfoBean>) (client, data, ackSender) ->
+                        imService.updateGroupInfo(client, data).subscribe(
+                                ignore -> ackSender.sendAckData(0),
+                                throwable -> ackSender.sendAckData(((IMError) throwable).getCode())
+                        )
+        );
+
         socketIOServer.addDisconnectListener(imService::logout);
-
-
-
-//        socketIOServer.addEventListener(
-//                IMEvent.LOGIN,
-//                LoginBean.class,
-//                (BaseListener<LoginBean>)(client, data) -> {
-//                    imService.login(data)
-//                            .subscribe(success -> {
-//                                if(success){
-//                                    client.sendEvent(IMEvent.LOGIN, 0);
-//                                } else {
-//                                    client.sendEvent(IMEvent.LOGIN, 1);
-//                                }
-//                            });
-//                }
-//        );
 
         imService.startMsgQueue();
         imService.startOfflineQueue();

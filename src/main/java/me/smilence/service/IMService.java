@@ -1,7 +1,6 @@
 package me.smilence.service;
 
 import com.lambdaworks.redis.api.sync.RedisCommands;
-import jdk.nashorn.internal.ir.annotations.Ignore;
 import me.smilence.IMError;
 import me.smilence.IMEvent;
 import me.smilence.MessageType;
@@ -133,10 +132,23 @@ public class IMService {
     }
 
     public Observable<Boolean> send2Friend(SocketIOClient client, MessageBean bean) {
-        bean.type = MessageType.CHAT_MESSAGE;
+        bean.type = MessageType.FRIEND_MESSAGE;
         return rxGetUsername(client)
                 .flatMap(username -> rxRedis.sismember(username + ":friends", bean.toUser))
                 .doOnNext(isMem -> rxAssert(isMem, IMError.INVALI_REQUEST))
+                .flatMap(ignore -> sendMessage(bean));
+    }
+
+    public Observable<Boolean> send2GroupMember(SocketIOClient client, MessageBean bean) {
+        bean.type = MessageType.FRIEND_MESSAGE;
+        return rxGetUsername(client)
+                .flatMap(myName -> Observable.zip(
+                        rxRedis.sismember(bean.group + ":members", myName),
+                        rxRedis.sismember(bean.group + ":members", bean.toUser),
+                        (aBoolean, aBoolean2) -> aBoolean && aBoolean2
+                ))
+                .compose(RxUtils.supportNull(IMError.GROUP_NOT_EXIST))
+                .doOnNext(success -> rxAssert(success, IMError.INVALI_REQUEST))
                 .flatMap(ignore -> sendMessage(bean));
     }
 
@@ -310,50 +322,6 @@ public class IMService {
 
     private boolean msgQueueStarted = false;
 
-    public void startMsgQueue() {
-        if (msgQueueStarted) return;
-        Observable.interval(10, TimeUnit.MILLISECONDS)
-                .map(ignore -> redis.lrange("msgQueue", 0, 999))
-                .doOnNext(list -> redis.ltrim("msgQueue", list.size(), -1))
-                .flatMap(Observable::from)
-                .map(s -> JSON.<MessageBean>parseObject(s, MessageBean.class))
-                .doOnNext((bean) -> sendMessage(bean).subscribe())
-                .doOnError(Throwable::printStackTrace)
-                .doOnError(throwable -> restartMsgQueue())
-                .subscribe();
-    }
-
-    private void restartMsgQueue() {
-        msgQueueStarted = false;
-        startMsgQueue();
-    }
-
-    private boolean offlineQueueStarted = false;
-
-    public void startOfflineQueue() {
-        if (offlineQueueStarted) return;
-        Observable.interval(10, TimeUnit.MILLISECONDS)
-                .map(ignore -> userOnline.values())
-                .flatMap(Observable::from)
-                .map(client -> client.<String>get("username"))
-                .filter(StringUtils::isNoneEmpty)
-                .doOnNext(username -> {
-                    List<String> list = redis.lrange("msg:" + username, 0, 999);
-                    if (list.size() > 0) {
-                        redis.ltrim("msg:" + username, list.size(), -1);
-                        redis.rpush("msgQueue", list.toArray(new String[list.size()]));
-                    }
-                })
-                .doOnError(Throwable::printStackTrace)
-                .doOnError(throwable -> restartOfflineQueue())
-                .subscribe();
-    }
-
-    private void restartOfflineQueue() {
-        offlineQueueStarted = false;
-        startOfflineQueue();
-    }
-
     public Observable<List<String>> getMembers(SocketIOClient client, String group) {
         return rxGetUsername(client)
                 .flatMap(myName -> rxRedis.sismember(group + ":members", myName))
@@ -408,6 +376,50 @@ public class IMService {
                         (num1, num2) -> num1 > 0 && num2 > 0
                 ))
                 .doOnNext(success -> rxAssert(success, IMError.TARGET_NOT_EXIST));
+    }
+
+    public void startMsgQueue() {
+        if (msgQueueStarted) return;
+        Observable.interval(10, TimeUnit.MILLISECONDS)
+                .map(ignore -> redis.lrange("msgQueue", 0, 999))
+                .doOnNext(list -> redis.ltrim("msgQueue", list.size(), -1))
+                .flatMap(Observable::from)
+                .map(s -> JSON.<MessageBean>parseObject(s, MessageBean.class))
+                .doOnNext((bean) -> sendMessage(bean).subscribe())
+                .doOnError(Throwable::printStackTrace)
+                .doOnError(throwable -> restartMsgQueue())
+                .subscribe();
+    }
+
+    private void restartMsgQueue() {
+        msgQueueStarted = false;
+        startMsgQueue();
+    }
+
+    private boolean offlineQueueStarted = false;
+
+    public void startOfflineQueue() {
+        if (offlineQueueStarted) return;
+        Observable.interval(10, TimeUnit.MILLISECONDS)
+                .map(ignore -> userOnline.values())
+                .flatMap(Observable::from)
+                .map(client -> client.<String>get("username"))
+                .filter(StringUtils::isNoneEmpty)
+                .doOnNext(username -> {
+                    List<String> list = redis.lrange("msg:" + username, 0, 999);
+                    if (list.size() > 0) {
+                        redis.ltrim("msg:" + username, list.size(), -1);
+                        redis.rpush("msgQueue", list.toArray(new String[list.size()]));
+                    }
+                })
+                .doOnError(Throwable::printStackTrace)
+                .doOnError(throwable -> restartOfflineQueue())
+                .subscribe();
+    }
+
+    private void restartOfflineQueue() {
+        offlineQueueStarted = false;
+        startOfflineQueue();
     }
 
     public static void main(String[] args) throws InterruptedException {
