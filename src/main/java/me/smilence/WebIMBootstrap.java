@@ -201,7 +201,7 @@ public class WebIMBootstrap {
         );
 
         socketIOServer.addEventListener(
-                "remove friend",
+                IMEvent.REMOVE_FRIEND,
                 String.class,
                 (BaseListener<String>) (client, data, ackSender) -> {
                     imService.removeFriend(client, data)
@@ -213,7 +213,7 @@ public class WebIMBootstrap {
         );
 
         socketIOServer.addEventListener(
-                "send to friend",
+                IMEvent.SEND_TO_FREIND,
                 MessageBean.class,
                 (BaseListener<MessageBean>) (client, data, ackSender) -> {
                     imService.send2Friend(client, data)
@@ -225,7 +225,7 @@ public class WebIMBootstrap {
         );
 
         socketIOServer.addEventListener(
-                "get friend list",
+                IMEvent.GET_FRIENDS,
                 Object.class,
                 (BaseListener<Object>) (client, data, ackSender) -> {
                     imService.getFriendList(client)
@@ -237,7 +237,7 @@ public class WebIMBootstrap {
         );
 
         socketIOServer.addEventListener(
-                "join group",
+                IMEvent.JOIN_GROUP,
                 MessageBean.class,
                 (BaseListener<MessageBean>) (client, data, ackSender) -> {
                     imService.joinGroup(client, data)
@@ -249,7 +249,7 @@ public class WebIMBootstrap {
         );
 
         socketIOServer.addEventListener(
-                "reply of join group",
+                IMEvent.REPLY_OF_JOIN_GROUP,
                 MessageBean.class,
                 (BaseListener<MessageBean>) (client, data, ackSender) -> {
                     imService.replyOfJoinGroup(client, data)
@@ -260,21 +260,8 @@ public class WebIMBootstrap {
                 }
         );
 
-
         socketIOServer.addEventListener(
-                "exit group",
-                String.class,
-                (BaseListener<String>) (client, data, ackSender) -> {
-                    imService.exitGroup(client, data)
-                            .subscribe(
-                                    ignore -> ackSender.sendAckData(0),
-                                    throwable -> ackSender.sendAckData(((IMError) throwable).getCode())
-                            );
-                }
-        );
-
-        socketIOServer.addEventListener(
-                "add group",
+                IMEvent.ADD_GROUP,
                 GroupBean.class,
                 (BaseListener<GroupBean>) (client, data, ackSender) -> {
                     imService.addGroup(client, data)
@@ -286,7 +273,7 @@ public class WebIMBootstrap {
         );
 
         socketIOServer.addEventListener(
-                "get group info",
+                IMEvent.GET_GROUP_INFO,
                 String.class,
                 (BaseListener<String>) (client, data, ackSender) -> {
                     imService.getGroupInfo(client, data)
@@ -298,7 +285,7 @@ public class WebIMBootstrap {
         );
 
         socketIOServer.addEventListener(
-                "get chat key",
+                IMEvent.GET_CHAT_KEY,
                 String.class,
                 (BaseListener<String>) (client, username, ackSender) -> {
                     imService.getChatKey(client, username)
@@ -310,7 +297,7 @@ public class WebIMBootstrap {
         );
 
         socketIOServer.addEventListener(
-                "set chat key",
+                IMEvent.SET_CHAT_KEY,
                 SetChatKeyBean.class,
                 (BaseListener<SetChatKeyBean>) (client, bean, ackSender) -> {
                     imService.setChatKey(client, bean)
@@ -322,7 +309,7 @@ public class WebIMBootstrap {
         );
 
         socketIOServer.addEventListener(
-                "get public key",
+                IMEvent.GET_PUBLIC_KEY,
                 String.class,
                 (BaseListener<String>) (client, bean, ackSender) -> {
                     imService.getPublicKey(client, bean)
@@ -334,7 +321,7 @@ public class WebIMBootstrap {
         );
 
         socketIOServer.addEventListener(
-                "get groups",
+                IMEvent.GET_GROUPS,
                 Object.class,
                 (BaseListener<Object>) (client, ignore, ackSender) ->
                         imService.getGroups(client).subscribe(
@@ -344,7 +331,7 @@ public class WebIMBootstrap {
         );
 
         socketIOServer.addEventListener(
-                "get group members",
+                IMEvent.GET_GROUP_MEMBERS,
                 String.class,
                 (BaseListener<String>) (client, groupName, ackSender) ->
                         imService.getMembers(client, groupName).subscribe(
@@ -354,7 +341,7 @@ public class WebIMBootstrap {
         );
 
         socketIOServer.addEventListener(
-                "exit group",
+                IMEvent.EXIT_GROUP,
                 String.class,
                 (BaseListener<String>) (client, groupName, ackSender) ->
                         imService.exitGroup(client, groupName).subscribe(
@@ -364,7 +351,7 @@ public class WebIMBootstrap {
         );
 
         socketIOServer.addEventListener(
-                "remove group member",
+                IMEvent.REMOVE_GROUP_MEMBER,
                 RemoveGroupMemberBean.class,
                 (BaseListener<RemoveGroupMemberBean>) (client, bean, ackSender) ->
                         imService.removeGroupMember(client, bean).subscribe(
