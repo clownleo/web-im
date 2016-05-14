@@ -99,7 +99,7 @@ var clientIO = function () {
         ADD_FRIEND : "add friend",
         REPLY_OF_ADD_FRIEND : "reply of add friend",
         REMOVE_FRIEND : "remove friend",
-        SEND_TO_FREIND : "send to friend",
+        SEND_TO_FRIEND : "send to friend",
         GET_FRIENDS : "get friends",
         JOIN_GROUP : "join group",
         REPLY_OF_JOIN_GROUP : "reply of join group",
@@ -371,6 +371,9 @@ var clientIO = function () {
         addFriend: addFriend,
         replyAddFriend: replyAddFriend,
         getFriendsList: getFriendsList,
+        removeMemberOfGroup:removeMemberOfGroup,
+        exitGroup:exitGroup,
+        getListOfGroups:getListOfGroups,
 
         addGroup:addGroup,
         joinGroup:joinGroup,
@@ -405,3 +408,7 @@ client.onMsg().subscribe(data => console.log(data));
 //client.joinGroup({from_user:'kiss',to_user:'abc',group:'smilence'}).subscribe();
 //client.replyOfJoinGroup({group:'smilence',to_user:'kiss',context:'YES'}).subscribe();
 //client.getMembersOfGroup('smilence').subscribe();
+
+//client.removeMemberOfGroup({group:'smilence',member:'kiss'}).subscribe((data)=>console.log(data));
+//client.exitGroup('smilence').subscribe((data)=>console.log(data);
+//client.getListOfGroups().subscribe((data)=>console.log(data));
