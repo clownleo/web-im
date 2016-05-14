@@ -1,6 +1,7 @@
 package me.smilence;
 
 /**
+ * 消息类型
  * Created by jimily on 16-5-14.
  */
 public class MessageType {

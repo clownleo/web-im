@@ -213,7 +213,7 @@ public class WebIMBootstrap {
         );
 
         socketIOServer.addEventListener(
-                IMEvent.SEND_TO_FREIND,
+                IMEvent.SEND_TO_FRIEND,
                 MessageBean.class,
                 (BaseListener<MessageBean>) (client, data, ackSender) -> {
                     imService.send2Friend(client, data)

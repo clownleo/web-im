@@ -18,7 +18,7 @@ public class IMEvent {
             ADD_FRIEND = "add friend",
             REPLY_OF_ADD_FRIEND = "reply of add friend",
             REMOVE_FRIEND = "remove friend",
-            SEND_TO_FREIND = "send to friend",
+            SEND_TO_FRIEND = "send to friend",
             GET_FRIENDS = "get friends",
             JOIN_GROUP = "join group",
             REPLY_OF_JOIN_GROUP = "reply of join group",
