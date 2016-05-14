@@ -1,13 +1,13 @@
 package me.smilence;
 
-import me.smilence.commons.utils.InfoMonitor;
-import me.smilence.commons.utils.properties.PropertiesLoader;
-import me.smilence.eventbean.*;
-import me.smilence.service.IMService;
 import com.corundumstudio.socketio.*;
 import com.corundumstudio.socketio.listener.DataListener;
 import com.corundumstudio.socketio.listener.ExceptionListener;
 import io.netty.channel.ChannelHandlerContext;
+import me.smilence.commons.utils.InfoMonitor;
+import me.smilence.commons.utils.properties.PropertiesLoader;
+import me.smilence.eventbean.*;
+import me.smilence.service.IMService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -309,6 +309,16 @@ public class WebIMBootstrap {
         );
 
         socketIOServer.addEventListener(
+                "get groups",
+                Object.class,
+                (BaseListener<Object>) (client, ignore, ackSender) ->
+                        imService.getGroups(client).subscribe(
+                                groups -> ackSender.sendAckData(0, groups),
+                                throwable -> ackSender.sendAckData(((IMError) throwable).getCode())
+                        )
+        );
+
+        socketIOServer.addEventListener(
                 "get group members",
                 String.class,
                 (BaseListener<String>) (client, groupName, ackSender) ->
@@ -323,6 +333,16 @@ public class WebIMBootstrap {
                 String.class,
                 (BaseListener<String>) (client, groupName, ackSender) ->
                         imService.exitGroup(client, groupName).subscribe(
+                                ignore -> ackSender.sendAckData(0),
+                                throwable -> ackSender.sendAckData(((IMError) throwable).getCode())
+                        )
+        );
+
+        socketIOServer.addEventListener(
+                "remove group member",
+                RemoveGroupMemberBean.class,
+                (BaseListener<RemoveGroupMemberBean>) (client, bean, ackSender) ->
+                        imService.removeGroupMember(client, bean).subscribe(
                                 ignore -> ackSender.sendAckData(0),
                                 throwable -> ackSender.sendAckData(((IMError) throwable).getCode())
                         )

@@ -377,14 +377,26 @@ public class IMService {
                 .map(JSON::parseObject);
     }
 
-    public Observable<Boolean> updateGroupInfo(SocketIOClient client, String group, Object info){
+    public Observable<Boolean> updateGroupInfo(SocketIOClient client, UpdateGroupInfoBean ginfo){
         return Observable
                 .zip(
                         rxGetUsername(client),
-                        rxRedis.hget("group:" + group, "owner"),
+                        rxRedis.hget("group:" + ginfo.group, "owner"),
                         StringUtils::equals
                 ).compose(RxUtils.supportNull(IMError.INVALI_REQUEST))
-                .flatMap(ignore -> rxRedis.hset("group:" + group, "info", JSON.toJSONString(info) ) );
+                .flatMap(ignore -> rxRedis.hset("group:" + ginfo.group, "info", JSON.toJSONString(ginfo.info) ) );
+    }
+
+    public Observable<Boolean> removeGroupMember(SocketIOClient client, RemoveGroupMemberBean bean){
+        return Observable
+                .zip(
+                        rxGetUsername(client),
+                        rxRedis.hget("group:" + bean.group, "owner"),
+                        StringUtils::equals
+                ).compose(RxUtils.supportNull(IMError.INVALI_REQUEST))
+                .flatMap(ignore -> rxRedis.srem(bean.group + ":members", bean.member))
+                .doOnNext(num -> rxAssert(num > 0, IMError.TARGET_NOT_EXIST))
+                .map(num -> num > 0);
     }
 
     public static void main(String[] args) throws InterruptedException {
