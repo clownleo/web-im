@@ -201,6 +201,18 @@ public class WebIMBootstrap {
         );
 
         socketIOServer.addEventListener(
+                "remove friend ",
+                String.class,
+                (BaseListener<String>) (client, data, ackSender) -> {
+                    imService.removeFriend(client, data)
+                            .subscribe(
+                                    ignore -> ackSender.sendAckData(0),
+                                    throwable -> ackSender.sendAckData(((IMError) throwable).getCode())
+                            );
+                }
+        );
+
+        socketIOServer.addEventListener(
                 "send to friend",
                 MessageBean.class,
                 (BaseListener<MessageBean>) (client, data, ackSender) -> {
@@ -235,6 +247,19 @@ public class WebIMBootstrap {
                             );
                 }
         );
+
+        socketIOServer.addEventListener(
+                "reply of join group",
+                MessageBean.class,
+                (BaseListener<MessageBean>) (client, data, ackSender) -> {
+                    imService.replyOfJoinGroup(client, data)
+                            .subscribe(
+                                    ignore -> ackSender.sendAckData(0),
+                                    throwable -> ackSender.sendAckData(((IMError) throwable).getCode())
+                            );
+                }
+        );
+
 
         socketIOServer.addEventListener(
                 "exit group",

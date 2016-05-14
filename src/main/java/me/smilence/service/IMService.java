@@ -178,6 +178,13 @@ public class IMService {
                 .doOnNext(aBoolean -> sendMessage(bean).subscribe());
     }
 
+    public Observable<Boolean> removeFriend(SocketIOClient client, String friend) {
+        return rxGetUsername(client)
+                .flatMap(myName -> rxRedis.srem(myName + "friends", friend))
+                .doOnNext(num -> rxAssert(num > 0, IMError.TARGET_NOT_EXIST))
+                .map(num -> num > 0);
+    }
+
     public Observable<Boolean> addGroup(SocketIOClient client, GroupBean bean) {
 
         return rxRedis.exists("group:" + bean.groupName)
@@ -254,13 +261,6 @@ public class IMService {
                         return Observable.just(false);
                 })
                 .doOnNext(aBoolean -> sendMessage(bean).subscribe());
-    }
-
-    public Observable<Boolean> removeFriend(SocketIOClient client, String username) {
-        return rxGetUsername(client)
-                .flatMap(myName -> rxRedis.srem(myName + "friends", username))
-                .doOnNext(num -> rxAssert(num > 0, IMError.INVALI_REQUEST))
-                .map(aLong1 -> aLong1 > 0);
     }
 
     /**
