@@ -98,7 +98,7 @@ public class WebIMBootstrap {
                 (BaseListener<Object>) (client, data, ackSender) -> {
                     imService.newStamp(client)
                             .subscribe(
-                    stamp -> ackSender.sendAckData(0, stamp),
+                                    stamp -> ackSender.sendAckData(0, stamp),
                                     throwable -> ackSender.sendAckData(((IMError) throwable).getCode())
                             );
                 }
@@ -427,7 +427,7 @@ public class WebIMBootstrap {
 
         @Override
         default void onData(SocketIOClient client, T data, AckRequest ackSender) throws Exception {
-                if(!(data instanceof EventBean) || ((EventBean)data).validate()){
+            if(!(data instanceof EventBean) || ((EventBean)data).validate()){
                 on(client, data, ackSender);
             } else ackSender.sendAckData(IMError.FORMAT_ERROR.getCode());
 
