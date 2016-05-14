@@ -3,21 +3,13 @@ package me.smilence.commons.utils;
 import com.google.common.collect.Lists;
 import com.lambdaworks.redis.RedisClient;
 import com.lambdaworks.redis.api.rx.RedisReactiveCommands;
-import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.codec.digest.DigestUtils;
 import rx.Observable;
 import rx.Subscriber;
 
-import javax.crypto.Cipher;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.spec.IvParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
-import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Function;
 
 /**
  * Created by leo on 16-5-9.
@@ -32,16 +24,16 @@ public class RxUtils {
             .reactive();
 
 
-    static public <T> Observable.Transformer<T, List<T>> listSuportNull() {
+    static public <T> Observable.Transformer<T, List<T>> listSupport() {
         return tObservable -> tObservable
                 .collect(Lists::<T>newLinkedList, List::add);
     }
 
-    static public <T> Observable.Transformer<T, T> suportNull() {
-        return suportNull(null);
+    static public <T> Observable.Transformer<T, T> supportNull() {
+        return supportNull(null);
     }
 
-    static public <T> Observable.Transformer<T, T> suportNull(Throwable ex) {
+    static public <T> Observable.Transformer<T, T> supportNull(Throwable ex) {
         return tObservable ->
                 Observable.create(subscriber -> {
                     AtomicBoolean noData = new AtomicBoolean(true);

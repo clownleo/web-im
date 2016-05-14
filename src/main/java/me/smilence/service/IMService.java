@@ -60,7 +60,7 @@ public class IMService {
             return Observable.create(subscriber -> subscriber.onError(IMError.INVALI_REQUEST));
 
         return rxRedis.hget("user:" + bean.username, "keySign")
-                .compose(RxUtils.suportNull(IMError.USERNAME_NOT_EXIST))
+                .compose(RxUtils.supportNull(IMError.USERNAME_NOT_EXIST))
                 .doOnNext(keySign -> rxAssert(AES.Encrypt(stamp, keySign).equals(bean.signature), IMError.AUTH_FAIL))
                 .doOnNext(ignore -> {
                     client.del("stamp");
@@ -104,31 +104,31 @@ public class IMService {
 
     public Observable<String> getKeyEncrypted(SocketIOClient client, String username) {
         return rxRedis.hget("user:" + username, "keyEncrypted")
-                .compose(RxUtils.suportNull(IMError.USERNAME_NOT_EXIST));
+                .compose(RxUtils.supportNull(IMError.USERNAME_NOT_EXIST));
     }
 
     public Observable<String> getPublicKey(SocketIOClient client, String username) {
         return rxRedis.hget("user:" + username, "publicKey")
-                .compose(RxUtils.suportNull(IMError.USERNAME_NOT_EXIST));
+                .compose(RxUtils.supportNull(IMError.USERNAME_NOT_EXIST));
     }
 
     public Observable<String> getChatKey(SocketIOClient client, String username) {
         return rxGetUsername(client)
                 .flatMap(myName -> rxRedis.get(username + ":chat:" + myName))
-                .compose(RxUtils.suportNull(IMError.TARGET_NOT_EXIST));
+                .compose(RxUtils.supportNull(IMError.TARGET_NOT_EXIST));
     }
 
     public Observable<Boolean> setChatKey(SocketIOClient client, SetChatKeyBean bean) {
         return rxGetUsername(client)
                 .flatMap(myName -> rxRedis.set(myName + ":chat:" + bean.toUser, bean.chatKey))
-                .compose(RxUtils.suportNull(IMError.USERNAME_NOT_EXIST))
+                .compose(RxUtils.supportNull(IMError.USERNAME_NOT_EXIST))
                 .map("OK"::equalsIgnoreCase);
     }
 
-    public Observable<Boolean> updateUserInfo(SocketIOClient client, UpdateUserInfoBean bean) {
-        if (client.<String>get("username") != null && userOnline.containsKey(client.<String>get("username")))
-            return Observable.create(subscriber -> subscriber.onError(IMError.UNLOGIN));
-        return rxRedis.hset("user:" + client.<String>get("username"), "info", JSON.toJSONString(bean.info));
+    public Observable<Boolean> updateUserInfo(SocketIOClient client, Object info) {
+        return rxGetUsername(client)
+                .flatMap(myName -> rxRedis.hset("user:" + myName, "info", JSON.toJSONString(info)));
+
     }
 
     public Observable<Boolean> send2Friend(SocketIOClient client, MessageBean bean) {
@@ -159,12 +159,13 @@ public class IMService {
     public Observable<List<String>> getFriendList(SocketIOClient client) {
         return rxGetUsername(client)
                 .flatMap(username -> rxRedis.smembers(username + ":friends"))
-                .compose(RxUtils.listSuportNull());
+                .compose(RxUtils.listSupport());
     }
 
     public Observable<Object> getUserInfo(SocketIOClient client, String username) {
         return rxRedis.hget("user:" + username, "info")
-                .compose(RxUtils.suportNull(IMError.TARGET_NOT_EXIST));
+                .compose(RxUtils.supportNull(IMError.TARGET_NOT_EXIST))
+                .map(JSON::parseObject);
     }
 
     public Observable<Boolean> addFriend(SocketIOClient client, MessageBean bean) {
@@ -177,7 +178,7 @@ public class IMService {
                 .doOnNext(aBoolean -> sendMessage(bean).subscribe());
     }
 
-    public Observable<Boolean> addGroup(SocketIOClient client, GroupBeaddan bean) {
+    public Observable<Boolean> addGroup(SocketIOClient client, GroupBean bean) {
 
         return rxRedis.exists("group:" + bean.groupName)
                 .doOnNext(isExist -> rxAssert(isExist <= 0, IMError.GROUP_NAME_ALREADY_EXIST))
@@ -196,7 +197,7 @@ public class IMService {
 
         bean.type = MessageType.REPLY_ADD_FRIEND;
         return rxRedis.srem(bean.toUser + ":addFriend", username)
-                .compose(RxUtils.suportNull(IMError.INVALI_REQUEST))
+                .compose(RxUtils.supportNull(IMError.INVALI_REQUEST))
                 .doOnNext(num -> rxAssert(num > 0, IMError.INVALI_REQUEST))
                 .flatMap(ignore -> {
                     if ("YES".equalsIgnoreCase(bean.context)) {
@@ -221,7 +222,7 @@ public class IMService {
                             return bean;
                         }
                 )
-                .compose(RxUtils.suportNull(IMError.TARGET_NOT_EXIST))
+                .compose(RxUtils.supportNull(IMError.TARGET_NOT_EXIST))
                 .flatMap(bean1 -> rxRedis.sadd(bean1.fromUser + ":joinGroup", bean1.group))
                 .doOnNext(ignore -> sendMessage(bean).subscribe())
                 .map(l -> l > 0);
@@ -239,7 +240,7 @@ public class IMService {
                         }
                 )
                 .flatMap(ignore -> rxRedis.srem(bean.toUser + ":joinGroup", bean.group))
-                .compose(RxUtils.suportNull(IMError.INVALI_REQUEST))
+                .compose(RxUtils.supportNull(IMError.INVALI_REQUEST))
                         //判断是否是为有效的入群回复
                 .doOnNext(num -> rxAssert(num > 0, IMError.INVALI_REQUEST))
                 .flatMap(ignore -> {
@@ -343,6 +344,47 @@ public class IMService {
     private void restartOfflineQueue() {
         offlineQueueStarted = false;
         startOfflineQueue();
+    }
+
+    public Observable<List<String>> getMembers(SocketIOClient client, String group) {
+        return rxGetUsername(client)
+                .flatMap(myName -> rxRedis.sismember(group + ":members", myName))
+                .doOnNext(isMember -> rxAssert(isMember, IMError.INVALI_REQUEST))
+                .flatMap(ignore -> rxRedis.smembers(group + ":members"))
+                .compose(RxUtils.listSupport()) ;
+    }
+
+    public Observable<List<String>> getGroups(SocketIOClient client) {
+        return rxGetUsername(client)
+                .flatMap(username -> rxRedis.smembers(username + ":myGroups"))
+                .compose(RxUtils.listSupport()) ;
+    }
+
+    public Observable<Boolean> exitGroup(SocketIOClient client, String group){
+        return rxGetUsername(client)
+                .flatMap(
+                        myName -> Observable.zip(
+                                rxRedis.srem(myName + ":myGroups", group),
+                                rxRedis.srem(group + ":members", myName),
+                                (num1, num2) -> num1 > 0 && num2 > 0
+                        )
+                ).compose(RxUtils.supportNull(IMError.INVALI_REQUEST));
+    }
+
+    public Observable<Object> getGroupInfo(SocketIOClient client, String group){
+        return rxRedis.hget("groups:" + group, "info")
+                .compose(RxUtils.supportNull(IMError.GROUP_NOT_EXIST) )
+                .map(JSON::parseObject);
+    }
+
+    public Observable<Boolean> updateGroupInfo(SocketIOClient client, String group, Object info){
+        return Observable
+                .zip(
+                        rxGetUsername(client),
+                        rxRedis.hget("group:" + group, "owner"),
+                        StringUtils::equals
+                ).compose(RxUtils.supportNull(IMError.INVALI_REQUEST))
+                .flatMap(ignore -> rxRedis.hset("group:" + group, "info", JSON.toJSONString(info) ) );
     }
 
     public static void main(String[] args) throws InterruptedException {
