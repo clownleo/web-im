@@ -195,13 +195,12 @@ public class IMService {
                     group.owner = username;
                     return group;
                 })
-                .flatMap(group ->
-                        Observable.zip(
-                                rxRedis.hmset("group:" + group.groupName, group.getMap()),
-                                rxRedis.sadd(group.groupName + ":members", group.owner),
-                                (rs, num) -> "OK".equals(rs) && num > 0
-                    )
-                );
+                .flatMap(group -> Observable.zip(
+                        rxRedis.hmset("group:" + group.groupName, group.getMap()),
+                        rxRedis.sadd(group.owner + ":myGroups", group.groupName),
+                        rxRedis.sadd(group.groupName + ":members", group.owner),
+                        (rs, num1, num2) -> "OK".equals(rs) && num1 > 0 && num2 > 0
+                ));
     }
 
     public Observable<Boolean> replyOfAddFriend(SocketIOClient client, MessageBean bean) {
@@ -356,16 +355,16 @@ public class IMService {
                 .flatMap(myName -> rxRedis.sismember(group + ":members", myName))
                 .doOnNext(isMember -> rxAssert(isMember, IMError.INVALI_REQUEST))
                 .flatMap(ignore -> rxRedis.smembers(group + ":members"))
-                .compose(RxUtils.listSupport()) ;
+                .compose(RxUtils.listSupport());
     }
 
     public Observable<List<String>> getGroups(SocketIOClient client) {
         return rxGetUsername(client)
                 .flatMap(username -> rxRedis.smembers(username + ":myGroups"))
-                .compose(RxUtils.listSupport()) ;
+                .compose(RxUtils.listSupport());
     }
 
-    public Observable<Boolean> exitGroup(SocketIOClient client, String group){
+    public Observable<Boolean> exitGroup(SocketIOClient client, String group) {
         return rxGetUsername(client)
                 .flatMap(
                         myName -> Observable.zip(
@@ -376,23 +375,23 @@ public class IMService {
                 ).compose(RxUtils.supportNull(IMError.INVALI_REQUEST));
     }
 
-    public Observable<Object> getGroupInfo(SocketIOClient client, String group){
+    public Observable<Object> getGroupInfo(SocketIOClient client, String group) {
         return rxRedis.hget("groups:" + group, "info")
-                .compose(RxUtils.supportNull(IMError.GROUP_NOT_EXIST) )
+                .compose(RxUtils.supportNull(IMError.GROUP_NOT_EXIST))
                 .map(JSON::parseObject);
     }
 
-    public Observable<Boolean> updateGroupInfo(SocketIOClient client, UpdateGroupInfoBean ginfo){
+    public Observable<Boolean> updateGroupInfo(SocketIOClient client, UpdateGroupInfoBean ginfo) {
         return Observable
                 .zip(
                         rxGetUsername(client),
                         rxRedis.hget("group:" + ginfo.group, "owner"),
                         StringUtils::equals
                 ).compose(RxUtils.supportNull(IMError.INVALI_REQUEST))
-                .flatMap(ignore -> rxRedis.hset("group:" + ginfo.group, "info", JSON.toJSONString(ginfo.info) ) );
+                .flatMap(ignore -> rxRedis.hset("group:" + ginfo.group, "info", JSON.toJSONString(ginfo.info)));
     }
 
-    public Observable<Boolean> removeGroupMember(SocketIOClient client, RemoveGroupMemberBean bean){
+    public Observable<Boolean> removeGroupMember(SocketIOClient client, RemoveGroupMemberBean bean) {
         return Observable
                 .zip(
                         rxGetUsername(client),
