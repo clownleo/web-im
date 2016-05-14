@@ -183,7 +183,7 @@ public class IMService {
         return rxGetUsername(client)
                 .flatMap(myName -> Observable.zip(
                         rxRedis.srem(myName + ":friends", friend),
-                        rxRedis.srem(myName + ":friends", friend),
+                        rxRedis.srem(friend + ":friends", myName),
                         (num1, num2) -> num1 > 0 && num2 > 0
                 ))
                 .doOnNext(success -> rxAssert(success, IMError.TARGET_NOT_EXIST));
