@@ -76,42 +76,43 @@ var clientIO = function () {
     var publicKeyArr = [];
     var randomURL = "https://www.random.org/integers/?num=10&min=1&max=1000000000&col=10&base=16&format=plain&rnd=new";
     var messageType = {
-        CHAT_MESSAGE : 1,
-        ADD_FRIEND : 2,
-        REPLY_ADD_FRIEND : 3,
-        JOIN_GROUP : 4,
-        REPLY_JOIN_GROUP : 5,
-        DELETE_FRIEND : 6,
-        DELETE_GROUP_MEMBER : 7,
-        NOTIFICATION : 8
-        };
-    
+        FRIEND_MESSAGE: 1,
+        GROUP_MESSAGE: 2,
+        ADD_FRIEND: 3,
+        REPLY_ADD_FRIEND: 4,
+        JOIN_GROUP: 5,
+        REPLY_JOIN_GROUP: 6,
+        DELETE_FRIEND: 7,
+        DELETE_GROUP_MEMBER: 8,
+        NOTIFICATION: 9
+    };
+
     var IMEVENT = {
-        LOGIN : "login",
-        LOGOUT : "logout",
-        REGISTER : "register",
-        GET_KET_ENCRYPTED : "get key encrypted",
-        GET_KET_ENCRYPTED_bck : "get key encrypted bck",
-        MSG_SYNC : "msg_sync",
-        NEW_STAMP : "new stamp",
-        SET_KEY_BCK : "set key bck",
-        RESET_KEY : "reset key",
-        ADD_FRIEND : "add friend",
-        REPLY_OF_ADD_FRIEND : "reply of add friend",
-        REMOVE_FRIEND : "remove friend",
-        SEND_TO_FRIEND : "send to friend",
-        GET_FRIENDS : "get friends",
-        JOIN_GROUP : "join group",
-        REPLY_OF_JOIN_GROUP : "reply of join group",
-        ADD_GROUP : "add group",
-        GET_GROUP_INFO : "get group info",
-        GET_CHAT_KEY : "get chat key",
-        SET_CHAT_KEY : "set chat key",
-        GET_PUBLIC_KEY : "get public key",
-        GET_GROUPS : "get groups",
-        GET_GROUP_MEMBERS : "get group members",
-        EXIT_GROUP : "exit group",
-        REMOVE_GROUP_MEMBER : "remove group member"
+        LOGIN: "login",
+        LOGOUT: "logout",
+        REGISTER: "register",
+        GET_KET_ENCRYPTED: "get key encrypted",
+        GET_KET_ENCRYPTED_bck: "get key encrypted bck",
+        MSG_SYNC: "msg_sync",
+        NEW_STAMP: "new stamp",
+        SET_KEY_BCK: "set key bck",
+        RESET_KEY: "reset key",
+        ADD_FRIEND: "add friend",
+        REPLY_OF_ADD_FRIEND: "reply of add friend",
+        REMOVE_FRIEND: "remove friend",
+        SEND_TO_FRIEND: "send to friend",
+        GET_FRIENDS: "get friends",
+        JOIN_GROUP: "join group",
+        REPLY_OF_JOIN_GROUP: "reply of join group",
+        ADD_GROUP: "add group",
+        GET_GROUP_INFO: "get group info",
+        GET_CHAT_KEY: "get chat key",
+        SET_CHAT_KEY: "set chat key",
+        GET_PUBLIC_KEY: "get public key",
+        GET_GROUPS: "get groups",
+        GET_GROUP_MEMBERS: "get group members",
+        EXIT_GROUP: "exit group",
+        REMOVE_GROUP_MEMBER: "remove group member"
     };
     var newStamp = function () {
         return client.rxEmit(IMEVENT.NEW_STAMP);
@@ -138,12 +139,12 @@ var clientIO = function () {
         if (chatDecryptKeyArr[fromUsername]) {
             return Rx.Observable.just(chatDecryptKeyArr[fromUsername]);
         }
-        if(GettingChatDecryptKeyArr[fromUsername])
+        if (GettingChatDecryptKeyArr[fromUsername])
             return GettingChatDecryptKeyArr[fromUsername];
 
         return GettingChatDecryptKeyArr[fromUsername] = client.rxEmit(IMEVENT.GET_CHAT_KEY, fromUsername)
             .map(function (chatKey_encrypt) {
-                if(chatDecryptKeyArr[fromUsername])
+                if (chatDecryptKeyArr[fromUsername])
                     return chatDecryptKeyArr[fromUsername];
                 var RSAKey = cryptico.generateRSAKey(privateKey, 1024);
                 var chatKey = cryptico.decrypt(chatKey_encrypt, RSAKey).plaintext;
@@ -289,10 +290,10 @@ var clientIO = function () {
             })
     };
 
-    var sendMessage = function (message) {
+    var sendPrivateMessage = function (message) {
         return setAndGetChatKey(message)
             .flatMap(function (chatKey) {
-                message.context = CryptoJS.encryptAES4Java(message.context, chatKey);
+                message.content = CryptoJS.encryptAES4Java(message.content, chatKey);
                 return client.rxEmit(IMEVENT.SEND_TO_FRIEND, message)
                     .doOnNext(function () {
                         console.log(message);
@@ -300,10 +301,25 @@ var clientIO = function () {
                     })
             })
     };
+
+    var sendGroupMessage = function (message) {
+        //return setAndGetChatKey(message)
+        //    .flatMap(function (chatKey) {
+        //        message.content = CryptoJS.encryptAES4Java(message.content, chatKey);
+        //        return client.rxEmit(IMEVENT.SEND_TO_FRIEND, message)
+        //            .doOnNext(function () {
+        //                console.log(message);
+        //                console.log("send success");
+        //            })
+        //    })
+        //return Rx.Observable
+        //    .flatMap(getMembersOfGroup(message.group))
+    };
+
     var decryptMessage = function (message) {
         return getChatKey(message.from_user)
             .map(function (chatKey) {
-                message.context = CryptoJS.decryptAES4Java(message.context, chatKey);
+                message.content = CryptoJS.decryptAES4Java(message.content, chatKey);
                 return message;
             })
     };
@@ -313,7 +329,7 @@ var clientIO = function () {
             .rxOn(IMEVENT.MSG_SYNC)
             .flatMap(function (message) {
                 switch (message.type) {
-                    case messageType.CHAT_MESSAGE:
+                    case messageType.FRIEND_MESSAGE:
                         return decryptMessage(message);
                     default :
                         return Rx.Observable.just(message);
@@ -325,35 +341,35 @@ var clientIO = function () {
         return client.rxEmit(IMEVENT.GET_FRIENDS);
     };
 
-    var addGroup = function(group){
-        return client.rxEmit(IMEVENT.ADD_FRIEND , group);
+    var addGroup = function (group) {
+        return client.rxEmit(IMEVENT.ADD_FRIEND, group);
     };
 
     var joinGroup = function (group) {
-        return client.rxEmit(IMEVENT.JOIN_GROUP , group);
+        return client.rxEmit(IMEVENT.JOIN_GROUP, group);
     };
 
-    var replyOfJoinGroup = function(message){
-        return client.rxEmit(IMEVENT.REPLY_OF_JOIN_GROUP , message);
+    var replyOfJoinGroup = function (message) {
+        return client.rxEmit(IMEVENT.REPLY_OF_JOIN_GROUP, message);
     };
 
-    var getMembersOfGroup = function(groupName){
-        return client.rxEmit(IMEVENT.GET_GROUP_MEMBERS , groupName);
+    var getMembersOfGroup = function (groupName) {
+        return client.rxEmit(IMEVENT.GET_GROUP_MEMBERS, groupName);
     };
 
-    var deleteFriend = function(friendName) {
-        return client.rxEmit(IMEVENT.REMOVE_FRIEND , friendName);
+    var deleteFriend = function (friendName) {
+        return client.rxEmit(IMEVENT.REMOVE_FRIEND, friendName);
     };
 
-    var removeMemberOfGroup = function(removeGroupMember){
-        return client.rxEmit(IMEVENT.REMOVE_GROUP_MEMBER , removeGroupMember);
+    var removeMemberOfGroup = function (removeGroupMember) {
+        return client.rxEmit(IMEVENT.REMOVE_GROUP_MEMBER, removeGroupMember);
     };
 
-    var exitGroup = function(groupName){
-        return client.rxEmit(IMEVENT.EXIT_GROUP , groupName);
+    var exitGroup = function (groupName) {
+        return client.rxEmit(IMEVENT.EXIT_GROUP, groupName);
     };
 
-    var getListOfGroups = function(){
+    var getListOfGroups = function () {
         return client.rxEmit(IMEVENT.GET_GROUPS);
     };
 
@@ -365,21 +381,21 @@ var clientIO = function () {
         setNewPwd: setNewPwd,
         logout: logout,
 
-        sendMessage:sendMessage,
+        sendPrivateMessage: sendPrivateMessage,
         onMsg: onMsg,
 
         addFriend: addFriend,
         replyAddFriend: replyAddFriend,
         getFriendsList: getFriendsList,
-        deleteFriend:deleteFriend,
-        removeMemberOfGroup:removeMemberOfGroup,
-        exitGroup:exitGroup,
-        getListOfGroups:getListOfGroups,
+        deleteFriend: deleteFriend,
+        removeMemberOfGroup: removeMemberOfGroup,
+        exitGroup: exitGroup,
+        getListOfGroups: getListOfGroups,
 
-        addGroup:addGroup,
-        joinGroup:joinGroup,
-        replyOfJoinGroup:replyOfJoinGroup,
-        getMembersOfGroup:getMembersOfGroup
+        addGroup: addGroup,
+        joinGroup: joinGroup,
+        replyOfJoinGroup: replyOfJoinGroup,
+        getMembersOfGroup: getMembersOfGroup
     }
 };
 
@@ -393,7 +409,7 @@ client.onMsg().subscribe(data => console.log(data));
 //client.login({username: 'abc', pwd: '123'}).subscribe(()=>{},(error)=>console.log("error:"+error.code));
 
 //client.addFriend({from_user:'abc' , to_user:'kiss'}).subscribe();
-//client.replyAddFriend({from_user:'kiss' , to_user:'abc',context:'YES'}).subscribe();
+//client.replyAddFriend({from_user:'kiss' , to_user:'abc',content:'YES'}).subscribe();
 
 //client.register(true,{username:"kiss",pwd:"abc"}).subscribe(()=>{},(error)=>{});
 //client.login({username: 'kiss', pwd: 'abc'}).subscribe(()=>{},(error)=>console.log("error:"+error.code));
@@ -402,12 +418,12 @@ client.onMsg().subscribe(data => console.log(data));
 //client.deleteFriend('abc').subscribe((data)=>console.log(data))
 //client.getSbPublicKey('abc').subscribe((data)=>{console.log(data)})
 
-//client.sendMessage({from_user:'abc',to_user:'kiss',context:'你好'}).subscribe((data)=>{console.log(data)})
+//client.sendMessage({from_user:'abc',to_user:'kiss',content:'你好'}).subscribe((data)=>{console.log(data)})
 
 
 //client.addGroup({groupName:'smilence',info:'第一个群'}).subscribe();
 //client.joinGroup({from_user:'kiss',to_user:'abc',group:'smilence'}).subscribe();
-//client.replyOfJoinGroup({group:'smilence',to_user:'kiss',context:'YES'}).subscribe();
+//client.replyOfJoinGroup({group:'smilence',to_user:'kiss',content:'YES'}).subscribe();
 //client.getMembersOfGroup('smilence').subscribe();
 
 //client.removeMemberOfGroup({group:'smilence',member:'kiss'}).subscribe((data)=>console.log(data));
