@@ -15,5 +15,6 @@ public class MessageType {
             REPLY_JOIN_GROUP = 6,
             DELETE_FRIEND = 7,
             DELETE_GROUP_MEMBER = 8,
-            NOTIFICATION = 9;
+            EXIT_GROUP = 9,
+            NOTIFICATION = 10;
 }

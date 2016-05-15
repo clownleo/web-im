@@ -153,8 +153,8 @@ public class IMService {
     }
 
     private Observable<Boolean> sendMessage(MessageBean bean) {
-        bean.dateTime = new Date();
-        System.out.println(JSON.toJSONString(bean));
+//        bean.dateTime = new Date();
+//        System.out.println(JSON.toJSONString(bean));
         return rxRedis.exists("user:" + bean.toUser)
                 .doOnNext(num -> rxAssert(num > 0, IMError.TARGET_NOT_EXIST))
                 .map(ignore -> userOnline.get(bean.toUser))
@@ -184,11 +184,21 @@ public class IMService {
     public Observable<Boolean> addFriend(SocketIOClient client, MessageBean bean) {
         bean.type = MessageType.ADD_FRIEND;
         return rxRedis.exists("user:" + bean.toUser)
-                .doOnNext(num -> rxAssert(num > 0, IMError.INVALI_REQUEST))
+                .doOnNext(num -> rxAssert(num > 0, IMError.TARGET_NOT_EXIST))
                 .flatMap(ignore -> rxGetUsername(client))
                 .flatMap(username -> rxRedis.sadd(username + ":addFriend", bean.toUser))
                 .map(aLong1 -> aLong1 > 0)
-                .doOnNext(aBoolean -> sendMessage(bean).subscribe());
+                .doOnNext(aBoolean -> {
+                    MessageBean notice = new MessageBean(
+                            client.<String>get("username"),
+                            bean.toUser,
+                            null,
+                            new Date(),
+                            MessageType.ADD_FRIEND,
+                            bean.content
+                    );
+                    sendMessage(notice).subscribe();
+                });
     }
 
     public Observable<Boolean> removeFriend(SocketIOClient client, String friend) {
@@ -198,7 +208,18 @@ public class IMService {
                         rxRedis.srem(friend + ":friends", myName),
                         (num1, num2) -> num1 > 0 && num2 > 0
                 ))
-                .doOnNext(success -> rxAssert(success, IMError.TARGET_NOT_EXIST));
+                .doOnNext(success -> rxAssert(success, IMError.TARGET_NOT_EXIST))
+                .doOnNext(aBoolean -> {
+                    MessageBean notice = new MessageBean(
+                            client.<String>get("username"),
+                            friend,
+                            null,
+                            new Date(),
+                            MessageType.DELETE_FRIEND,
+                            null
+                    );
+                    sendMessage(notice).subscribe();
+                });
     }
 
     public Observable<Boolean> addGroup(SocketIOClient client, GroupBean bean) {
@@ -227,7 +248,7 @@ public class IMService {
                 .compose(RxUtils.supportNull(IMError.INVALI_REQUEST))
                 .doOnNext(num -> rxAssert(num > 0, IMError.INVALI_REQUEST))
                 .flatMap(ignore -> {
-                    if ("YES".equalsIgnoreCase(bean.context)) {
+                    if ("YES".equalsIgnoreCase(bean.content)) {
                         return Observable.zip(
                                 rxRedis.sadd(username + ":friends", bean.toUser),
                                 rxRedis.sadd(bean.toUser + ":friends", username),
@@ -235,7 +256,17 @@ public class IMService {
                         );
                     } else return Observable.just(false);
                 })
-                .doOnNext(aBoolean -> sendMessage(bean).subscribe());
+                .doOnNext(aBoolean -> {
+                    MessageBean notice = new MessageBean(
+                            client.<String>get("username"),
+                            bean.toUser,
+                            null,
+                            new Date(),
+                            MessageType.REPLY_ADD_FRIEND,
+                            aBoolean ? "allow add friend" : "reject add friend"
+                    );
+                    sendMessage(notice).subscribe();
+                });
     }
 
     public Observable<Boolean> joinGroup(SocketIOClient client, MessageBean bean) {
@@ -251,7 +282,17 @@ public class IMService {
                 )
                 .compose(RxUtils.supportNull(IMError.TARGET_NOT_EXIST))
                 .flatMap(bean1 -> rxRedis.sadd(bean1.fromUser + ":joinGroup", bean1.group))
-                .doOnNext(ignore -> sendMessage(bean).subscribe())
+                .doOnNext(ignore -> {
+                    MessageBean notice = new MessageBean(
+                            bean.toUser,
+                            bean.fromUser,
+                            bean.group,
+                            new Date(),
+                            MessageType.JOIN_GROUP,
+                            "join group"
+                    );
+                    sendMessage(notice).subscribe();
+                })
                 .map(l -> l > 0);
     }
 
@@ -271,7 +312,7 @@ public class IMService {
                         //判断是否是为有效的入群回复
                 .doOnNext(num -> rxAssert(num > 0, IMError.INVALI_REQUEST))
                 .flatMap(ignore -> {
-                    if ("YES".equalsIgnoreCase(bean.context)) {
+                    if ("YES".equalsIgnoreCase(bean.content)) {
                         return Observable.merge(
                                 rxRedis.sadd(bean.toUser + ":myGroups", bean.group),
                                 rxRedis.sadd(bean.group + ":members", bean.toUser)
@@ -280,7 +321,17 @@ public class IMService {
                     } else
                         return Observable.just(false);
                 })
-                .doOnNext(aBoolean -> sendMessage(bean).subscribe());
+                .doOnNext(aBoolean -> {
+                    MessageBean notice = new MessageBean(
+                            client.<String>get("username"),
+                            bean.toUser,
+                            bean.group,
+                            new Date(),
+                            MessageType.REPLY_ADD_FRIEND,
+                            aBoolean ? "allow join group" : "reject join group"
+                    );
+                    sendMessage(notice).subscribe();
+                });
     }
 
     /**
@@ -344,7 +395,18 @@ public class IMService {
                                 rxRedis.srem(group + ":members", myName),
                                 (num1, num2) -> num1 > 0 && num2 > 0
                         )
-                ).compose(RxUtils.supportNull(IMError.INVALI_REQUEST));
+                ).compose(RxUtils.supportNull(IMError.INVALI_REQUEST))
+                .doOnNext(aBoolean ->
+                        rxRedis.hget("group:" + group, "owner")
+                                .flatMap(owner -> sendMessage(
+                                        new MessageBean(
+                                                client.<String>get("uername"),
+                                                owner,
+                                                group,
+                                                new Date(),
+                                                MessageType.EXIT_GROUP,
+                                                "exit group")))
+                                .subscribe());
     }
 
     public Observable<Object> getGroupInfo(SocketIOClient client, String group) {
@@ -375,7 +437,20 @@ public class IMService {
                         rxRedis.srem(bean.member + "myGroups", bean.group),
                         (num1, num2) -> num1 > 0 && num2 > 0
                 ))
-                .doOnNext(success -> rxAssert(success, IMError.TARGET_NOT_EXIST));
+                .doOnNext(success -> rxAssert(success, IMError.TARGET_NOT_EXIST))
+                .doOnNext(aBoolean ->
+                                rxGetUsername(client)
+                                        .flatMap(myName -> sendMessage(
+                                                new MessageBean(
+                                                        myName,
+                                                        bean.member,
+                                                        bean.group,
+                                                        new Date(),
+                                                        MessageType.DELETE_GROUP_MEMBER,
+                                                        "remove member")))
+                                        .subscribe()
+
+                );
     }
 
     public void startMsgQueue() {

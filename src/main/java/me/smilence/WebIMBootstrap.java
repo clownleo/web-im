@@ -396,6 +396,16 @@ public class WebIMBootstrap {
                         )
         );
 
+        socketIOServer.addEventListener(
+                IMEvent.SEND_TO_GROUP_MEMBER,
+                MessageBean.class,
+                (BaseListener<MessageBean>) (client, data, ackSender) ->
+                        imService.send2GroupMember(client, data).subscribe(
+                                ignore -> ackSender.sendAckData(0),
+                                throwable -> ackSender.sendAckData(((IMError) throwable).getCode())
+                        )
+        );
+
         socketIOServer.addDisconnectListener(imService::logout);
 
         imService.startMsgQueue();
