@@ -57,11 +57,13 @@ public class IMService {
     public Observable<Boolean> auth(SocketIOClient client, LoginBean bean) {
         String stamp = client.<String>get("stamp");
         if (stamp == null)
-            return Observable.create(subscriber -> subscriber.onError(IMError.INVALI_REQUEST));
+            return Observable.create(subscriber -> subscriber.onError(IMError.INVALIDATE_REQUEST));
 
         return rxRedis.hget("user:" + bean.username, "keySign")
                 .compose(RxUtils.supportNull(IMError.USERNAME_NOT_EXIST))
                 .doOnNext(keySign -> rxAssert(AES.Encrypt(stamp, keySign).equals(bean.signature), IMError.AUTH_FAIL))
+                .flatMap(ignore -> rxRedis.hexists("user:" + bean.username, "stop"))
+                .doOnNext(isStop -> client.set("isStop", isStop))
                 .doOnNext(ignore -> {
                     client.del("stamp");
                     userOnline.put(bean.username, client);
@@ -135,7 +137,7 @@ public class IMService {
         bean.type = MessageType.FRIEND_MESSAGE;
         return rxGetUsername(client)
                 .flatMap(username -> rxRedis.sismember(username + ":friends", bean.toUser))
-                .doOnNext(isMem -> rxAssert(isMem, IMError.INVALI_REQUEST))
+                .doOnNext(isMem -> rxAssert(isMem, IMError.INVALIDATE_REQUEST))
                 .flatMap(ignore -> sendMessage(bean));
     }
 
@@ -148,7 +150,7 @@ public class IMService {
                         (aBoolean, aBoolean2) -> aBoolean && aBoolean2
                 ))
                 .compose(RxUtils.supportNull(IMError.GROUP_NOT_EXIST))
-                .doOnNext(success -> rxAssert(success, IMError.INVALI_REQUEST))
+                .doOnNext(success -> rxAssert(success, IMError.INVALIDATE_REQUEST))
                 .flatMap(ignore -> sendMessage(bean));
     }
 
@@ -245,8 +247,8 @@ public class IMService {
 
         bean.type = MessageType.REPLY_ADD_FRIEND;
         return rxRedis.srem(bean.toUser + ":addFriend", username)
-                .compose(RxUtils.supportNull(IMError.INVALI_REQUEST))
-                .doOnNext(num -> rxAssert(num > 0, IMError.INVALI_REQUEST))
+                .compose(RxUtils.supportNull(IMError.INVALIDATE_REQUEST))
+                .doOnNext(num -> rxAssert(num > 0, IMError.INVALIDATE_REQUEST))
                 .flatMap(ignore -> {
                     if ("YES".equalsIgnoreCase(bean.content)) {
                         return Observable.zip(
@@ -303,14 +305,14 @@ public class IMService {
                         rxGetUsername(client),
                         (owner, myName) -> {
                             //验证是否群主
-                            rxAssert(StringUtils.equals(owner, myName), IMError.INVALI_REQUEST);
+                            rxAssert(StringUtils.equals(owner, myName), IMError.INVALIDATE_REQUEST);
                             return null;
                         }
                 )
                 .flatMap(ignore -> rxRedis.srem(bean.toUser + ":joinGroup", bean.group))
-                .compose(RxUtils.supportNull(IMError.INVALI_REQUEST))
+                .compose(RxUtils.supportNull(IMError.INVALIDATE_REQUEST))
                         //判断是否是为有效的入群回复
-                .doOnNext(num -> rxAssert(num > 0, IMError.INVALI_REQUEST))
+                .doOnNext(num -> rxAssert(num > 0, IMError.INVALIDATE_REQUEST))
                 .flatMap(ignore -> {
                     if ("YES".equalsIgnoreCase(bean.content)) {
                         return Observable.merge(
@@ -376,7 +378,7 @@ public class IMService {
     public Observable<List<String>> getMembers(SocketIOClient client, String group) {
         return rxGetUsername(client)
                 .flatMap(myName -> rxRedis.sismember(group + ":members", myName))
-                .doOnNext(isMember -> rxAssert(isMember, IMError.INVALI_REQUEST))
+                .doOnNext(isMember -> rxAssert(isMember, IMError.INVALIDATE_REQUEST))
                 .flatMap(ignore -> rxRedis.smembers(group + ":members"))
                 .compose(RxUtils.listSupport());
     }
@@ -395,7 +397,7 @@ public class IMService {
                                 rxRedis.srem(group + ":members", myName),
                                 (num1, num2) -> num1 > 0 && num2 > 0
                         )
-                ).compose(RxUtils.supportNull(IMError.INVALI_REQUEST))
+                ).compose(RxUtils.supportNull(IMError.INVALIDATE_REQUEST))
                 .doOnNext(aBoolean ->
                         rxRedis.hget("group:" + group, "owner")
                                 .flatMap(owner -> sendMessage(
@@ -421,7 +423,7 @@ public class IMService {
                         rxGetUsername(client),
                         rxRedis.hget("group:" + ginfo.group, "owner"),
                         StringUtils::equals
-                ).compose(RxUtils.supportNull(IMError.INVALI_REQUEST))
+                ).compose(RxUtils.supportNull(IMError.INVALIDATE_REQUEST))
                 .flatMap(ignore -> rxRedis.hset("group:" + ginfo.group, "info", JSON.toJSONString(ginfo.info)));
     }
 
@@ -431,7 +433,7 @@ public class IMService {
                         rxGetUsername(client),
                         rxRedis.hget("group:" + bean.group, "owner"),
                         StringUtils::equals
-                ).compose(RxUtils.supportNull(IMError.INVALI_REQUEST))
+                ).compose(RxUtils.supportNull(IMError.INVALIDATE_REQUEST))
                 .flatMap(ignore -> Observable.zip(
                         rxRedis.srem(bean.group + ":members", bean.member),
                         rxRedis.srem(bean.member + "myGroups", bean.group),
@@ -491,6 +493,8 @@ public class IMService {
                 .doOnError(throwable -> restartOfflineQueue())
                 .subscribe();
     }
+
+
 
     private void restartOfflineQueue() {
         offlineQueueStarted = false;

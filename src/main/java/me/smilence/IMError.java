@@ -18,7 +18,9 @@ public class IMError extends RuntimeException {
             AUTH_FAIL = new IMError(4005, "auth fail"),
             TARGET_NOT_EXIST = new IMError(4006, "target not exist"),
             UNLOGIN = new IMError(4007, "user unlogin"),
-            INVALI_REQUEST = new IMError(4008, "invalidate request");
+            INVALIDATE_REQUEST = new IMError(4008, "invalidate request"),
+            USER_IS_SUSPENDED = new IMError(4009, "user is suspended"),
+            GROUP_IS_SUSPENDED = new IMError(4010, "group is suspended");
     private static Map<Integer, IMError> code2message;
 
     private static Map<Integer, IMError> getCode2message() {
