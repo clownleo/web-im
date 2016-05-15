@@ -86,11 +86,14 @@ var clientIO = function () {
     var client = io("ws://localhost:9090", {
         rememberUpgrade: true
     });
-    var privateKey;
+    var userPrivateKey;
+    var userRSA;
+    var userKeyEncrypt;
     var myUsername;
     var chatEncryptKeyArr = [];
     var chatDecryptKeyArr = [];
     var publicKeyArr = [];
+    var memberListsOfGroups = {};
     var randomURL = "https://www.random.org/integers/?num=10&min=1&max=1000000000&col=10&base=16&format=plain&rnd=new";
     var messageType = {
         FRIEND_MESSAGE: 1,
@@ -140,7 +143,7 @@ var clientIO = function () {
         if (chatEncryptKeyArr[message.to_user])
             return Rx.Observable.just(chatEncryptKeyArr[message.to_user]);
 
-        var chatKey = SHA256(privateKey + message.to_user);
+        var chatKey = SHA256(userPrivateKey + message.to_user);
         return getPublicKey(message.to_user)
             .map((publicKey) => cryptico.encrypt(chatKey, publicKey).cipher)
             .flatMap(chatKey_encrypt =>
@@ -164,14 +167,14 @@ var clientIO = function () {
             .map(function (chatKey_encrypt) {
                 if (chatDecryptKeyArr[fromUsername])
                     return chatDecryptKeyArr[fromUsername];
-                var RSAKey = cryptico.generateRSAKey(privateKey, 1024);
+                var RSAKey = userRSA;
                 var chatKey = cryptico.decrypt(chatKey_encrypt, RSAKey).plaintext;
                 chatDecryptKeyArr[fromUsername] = chatKey;
                 return chatKey;
             }).doOnNext(ignore => delete GettingChatDecryptKeyArr[fromUsername]);
     };
     var getPublicKey = function (username) {
-        //TloggerODO 以key_encrypt为密钥进行AES解密
+        //TODO 以key_encrypt为密钥进行AES解密
         if (publicKeyArr[username]) {
             return Rx.Observable.just(publicKeyArr[username]);
         }
@@ -212,7 +215,6 @@ var clientIO = function () {
                 };
             })
             .flatMap(function (data) {
-                //TODO 将注册信息发送给服务器
                 return client.rxEmit(IMEVENT.REGISTER, data)
                     .doOnNext(function () {
                         console.log("register success");
@@ -228,11 +230,11 @@ var clientIO = function () {
             client.rxEmit(IMEVENT.GET_KET_ENCRYPTED, inputUser.username),
             newStamp(),
             function (enk, stamp) {
-                console.log("stamp:" + stamp);
                 var key = CryptoJS.decryptAES4Java(enk, inputUser.pwd);
-                privateKey = key;
                 var key_sign = SHA256(key);
-                console.log("key_sign:" + key_sign);
+                userPrivateKey = key;
+                userKeyEncrypt = key_sign;
+                userRSA = cryptico.generateRSAKey(userPrivateKey, 1024);
                 return CryptoJS.encryptAES4Java(stamp, key_sign);
             }
         )
@@ -253,17 +255,17 @@ var clientIO = function () {
                 var key = CryptoJS.decryptAES4Java(enk, inputUser.pwd);
                 var key_sign = SHA256(key);
                 var key_encrypted_bck = CryptoJS.encryptAES4Java(key, inputUser.pwd_bck);
-                //TODO 设置密保是如何对称加密相应的传输内容
                 var encryptStamp = CryptoJS.encryptAES4Java(stamp, key_sign);
                 return {username: inputUser.username, key_encrypted_bck: key_encrypted_bck, signature: encryptStamp};
             }
         )
             .flatMap(function (x) {
-                console.log(x);
                 return client.rxEmit(IMEVENT.SET_KEY_BCK, x)
                     .doOnNext(function () {
                         console.log("set key bck success");
-                        privateKey = null;
+                        userPrivateKey = null;
+                        userKeyEncrypt = null;
+                        userRSA = null;
                     })
             });
     };
@@ -275,7 +277,6 @@ var clientIO = function () {
                 var key = CryptoJS.decryptAES4Java(enKeyBck, inputUser.pwd_bck);
                 var key_sign = SHA256(key);
                 var key_encrypted = CryptoJS.encryptAES4Java(key, inputUser.newPwd);
-                //TODO 重置密码是如何对称加密相应的传输内容
                 var encryptStamp = CryptoJS.encryptAES4Java(stamp, key_sign);
                 return {username: inputUser.username, key_encrypted: key_encrypted, signature: encryptStamp};
             }
@@ -285,13 +286,17 @@ var clientIO = function () {
                 return client.rxEmit(IMEVENT.RESET_KEY, x)
                     .doOnNext(function () {
                         console.log("reset key success");
-                        privateKey = null;
+                        userPrivateKey = null;
+                        userKeyEncrypt = null;
+                        userRSA = null;
                     })
             });
     };
 
     var logout = function () {
-        privateKey = null;
+        userPrivateKey = null;
+        userKeyEncrypt = null;
+        userRSA = null;
         client.rxEmit(IMEVENT.LOGOUT).subscribe();
     };
 
@@ -315,7 +320,6 @@ var clientIO = function () {
                 message.content = CryptoJS.encryptAES4Java(message.content, chatKey);
                 return client.rxEmit(IMEVENT.SEND_TO_FRIEND, message)
                     .doOnNext(function () {
-                        console.log(message);
                         console.log("send success");
                     })
             })
@@ -328,7 +332,6 @@ var clientIO = function () {
             })
             .filter(member => member != myUsername)
             .flatMap(function (memberName) {
-                console.log(memberName);
                 return setAndGetChatKey({to_user: memberName})
                     .map(function (chatKey) {
                         return {memberName: memberName, chatKey: chatKey}
@@ -339,6 +342,9 @@ var clientIO = function () {
                 tempMessage.to_user = bean.memberName;
                 tempMessage.content = CryptoJS.encryptAES4Java(message.content, bean.chatKey);
                 return client.rxEmit(IMEVENT.SEND_TO_GROUP_MEMBER, tempMessage);
+            })
+            .doOnNext(function(){
+                console.log("send success");
             });
     };
 
@@ -379,9 +385,21 @@ var clientIO = function () {
         return client.rxEmit(IMEVENT.REPLY_OF_JOIN_GROUP, message);
     };
 
+    var gettingMembersOfGroup = {};
     var getMembersOfGroup = function (groupName) {
-        return client
-            .rxEmit(IMEVENT.GET_GROUP_MEMBERS, groupName);
+        if(memberListsOfGroups[groupName])
+            return Rx.Observable.just(memberListsOfGroups[groupName]);
+
+        if(gettingMembersOfGroup[groupName])
+            return gettingMembersOfGroup[groupName];
+
+        console.log("membersListsOfGroups cache empty!");
+        return gettingMembersOfGroup[groupName] = client
+            .rxEmit(IMEVENT.GET_GROUP_MEMBERS, groupName)
+            .doOnNext(function(list){
+                memberListsOfGroups[groupName]=list;
+                delete gettingMembersOfGroup[groupName];
+            });
     };
 
     var deleteFriend = function (friendName) {
