@@ -286,8 +286,8 @@ public class IMService {
                 .flatMap(bean1 -> rxRedis.sadd(bean1.fromUser + ":joinGroup", bean1.group))
                 .doOnNext(ignore -> {
                     MessageBean notice = new MessageBean(
-                            bean.toUser,
                             bean.fromUser,
+                            bean.toUser,
                             bean.group,
                             new Date(),
                             MessageType.JOIN_GROUP,

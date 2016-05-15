@@ -13,6 +13,22 @@ var utils = {
             res += chars[id];
         }
         return res;
+    },
+    clone: function $clone(obj) {
+        if (typeof (obj) != 'object') {
+            return obj;
+        }
+
+        var re = obj.constructor == Array ? [] : {};
+
+        for (var i in obj) {
+            re[i] = $clone(obj[i]);
+        }
+
+        return re;
+    },
+    logger: function () {
+        console.log.apply(console, Array.prototype.slice(arguments, 0));
     }
 };
 
@@ -71,6 +87,7 @@ var clientIO = function () {
         rememberUpgrade: true
     });
     var privateKey;
+    var myUsername;
     var chatEncryptKeyArr = [];
     var chatDecryptKeyArr = [];
     var publicKeyArr = [];
@@ -84,7 +101,7 @@ var clientIO = function () {
         REPLY_JOIN_GROUP: 6,
         DELETE_FRIEND: 7,
         DELETE_GROUP_MEMBER: 8,
-        EXIT_GROUP : 9,
+        EXIT_GROUP: 9,
         NOTIFICATION: 10
     };
 
@@ -102,6 +119,7 @@ var clientIO = function () {
         REPLY_OF_ADD_FRIEND: "reply of add friend",
         REMOVE_FRIEND: "remove friend",
         SEND_TO_FRIEND: "send to friend",
+        SEND_TO_GROUP_MEMBER: "send to group member",
         GET_FRIENDS: "get friends",
         JOIN_GROUP: "join group",
         REPLY_OF_JOIN_GROUP: "reply of join group",
@@ -119,19 +137,18 @@ var clientIO = function () {
         return client.rxEmit(IMEVENT.NEW_STAMP);
     };
     var setAndGetChatKey = function (message) {
-        if (!chatEncryptKeyArr[message.to_user]) {
-            var chatKey = SHA256(privateKey + message.to_user);
-            return getSbPublicKey(message.to_user)
-                .map((publicKey) => cryptico.encrypt(chatKey, publicKey).cipher)
-                .flatMap(chatKey_encrypt =>
-                    client.rxEmit(IMEVENT.SET_CHAT_KEY, {to_user: message.to_user, chat_key: chatKey_encrypt})
-                        .doOnNext(function () {
-                            chatEncryptKeyArr[message.to_user] = chatKey;
-                        }))
-                .map(ignore => chatKey);
-        } else {
+        if (chatEncryptKeyArr[message.to_user])
             return Rx.Observable.just(chatEncryptKeyArr[message.to_user]);
-        }
+
+        var chatKey = SHA256(privateKey + message.to_user);
+        return getPublicKey(message.to_user)
+            .map((publicKey) => cryptico.encrypt(chatKey, publicKey).cipher)
+            .flatMap(chatKey_encrypt =>
+                client.rxEmit(IMEVENT.SET_CHAT_KEY, {to_user: message.to_user, chat_key: chatKey_encrypt})
+                    .doOnNext(function () {
+                        chatEncryptKeyArr[message.to_user] = chatKey;
+                    }))
+            .map(ignore => chatKey);
 
     };
 
@@ -153,8 +170,8 @@ var clientIO = function () {
                 return chatKey;
             }).doOnNext(ignore => delete GettingChatDecryptKeyArr[fromUsername]);
     };
-    var getSbPublicKey = function (username) {
-        //TODO 以key_encrypt为密钥进行AES解密
+    var getPublicKey = function (username) {
+        //TloggerODO 以key_encrypt为密钥进行AES解密
         if (publicKeyArr[username]) {
             return Rx.Observable.just(publicKeyArr[username]);
         }
@@ -223,6 +240,7 @@ var clientIO = function () {
                 console.log(x);
                 return client.rxEmit(IMEVENT.LOGIN, {username: inputUser.username, signature: x})
                     .doOnNext(function () {
+                        myUsername = inputUser.username;
                         console.log("login success");
                     })
             });
@@ -304,17 +322,24 @@ var clientIO = function () {
     };
 
     var sendGroupMessage = function (message) {
-        //return setAndGetChatKey(message)
-        //    .flatMap(function (chatKey) {
-        //        message.content = CryptoJS.encryptAES4Java(message.content, chatKey);
-        //        return client.rxEmit(IMEVENT.SEND_TO_FRIEND, message)
-        //            .doOnNext(function () {
-        //                console.log(message);
-        //                console.log("send success");
-        //            })
-        //    })
-        //return Rx.Observable
-        //    .flatMap(getMembersOfGroup(message.group))
+        return getMembersOfGroup(message.group)
+            .flatMap(function (members) {
+                return Rx.Observable.from(members);
+            })
+            .filter(member => member != myUsername)
+            .flatMap(function (memberName) {
+                console.log(memberName);
+                return setAndGetChatKey({to_user: memberName})
+                    .map(function (chatKey) {
+                        return {memberName: memberName, chatKey: chatKey}
+                    });
+            })
+            .flatMap(function (bean) {
+                var tempMessage = utils.clone(message);
+                tempMessage.to_user = bean.memberName;
+                tempMessage.content = CryptoJS.encryptAES4Java(message.content, bean.chatKey);
+                return client.rxEmit(IMEVENT.SEND_TO_GROUP_MEMBER, tempMessage);
+            });
     };
 
     var decryptMessage = function (message) {
@@ -343,7 +368,7 @@ var clientIO = function () {
     };
 
     var addGroup = function (group) {
-        return client.rxEmit(IMEVENT.ADD_FRIEND, group);
+        return client.rxEmit(IMEVENT.ADD_GROUP, group);
     };
 
     var joinGroup = function (group) {
@@ -355,7 +380,8 @@ var clientIO = function () {
     };
 
     var getMembersOfGroup = function (groupName) {
-        return client.rxEmit(IMEVENT.GET_GROUP_MEMBERS, groupName);
+        return client
+            .rxEmit(IMEVENT.GET_GROUP_MEMBERS, groupName);
     };
 
     var deleteFriend = function (friendName) {
@@ -383,6 +409,7 @@ var clientIO = function () {
         logout: logout,
 
         sendPrivateMessage: sendPrivateMessage,
+        sendGroupMessage: sendGroupMessage,
         onMsg: onMsg,
 
         addFriend: addFriend,
@@ -430,3 +457,6 @@ client.onMsg().subscribe(data => console.log(data));
 //client.removeMemberOfGroup({group:'smilence',member:'kiss'}).subscribe((data)=>console.log(data));
 //client.exitGroup('smilence').subscribe((data)=>console.log(data);
 //client.getListOfGroups().subscribe((data)=>console.log(data));
+
+//Rx.Observable.from([1,2,3]).map((x)=>{return x+2}).subscribe((data)=>console.log(data));
+//client.sendGroupMessage({group:'smilence',from_user:'abc',content:'群聊啦～'}).subscribe((data)=>console.log(data))
