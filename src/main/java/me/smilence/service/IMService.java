@@ -80,7 +80,7 @@ public class IMService {
                 .flatMap(ignore -> rxRedis.hexists("user:" + bean.username, "isSuspended"))
                 .doOnNext(isSuspended -> {
                     client.set("isSuspended", isSuspended);
-                    rxAssert(isSuspended, IMError.USER_IS_SUSPENDED);
+                    rxAssert(!isSuspended, IMError.USER_IS_SUSPENDED);
                 })
                 .doOnNext(ignore -> {
                     client.del("stamp");
