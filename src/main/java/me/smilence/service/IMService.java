@@ -204,6 +204,23 @@ public class IMService {
                 .flatMap(ignore -> sendMessage(bean));
     }
 
+    private Observable<Boolean> broadcast2OnlineMember(MessageBean bean) {
+        return rxRedis.smembers(bean.group + ":members")
+                .filter(userOnline::containsKey)
+                .flatMap(username ->
+                                sendMessage(
+                                        new MessageBean(
+                                                bean.fromUser,
+                                                username,
+                                                bean.group,
+                                                bean.dateTime,
+                                                bean.type,
+                                                bean.content
+                                        )
+                                )
+                );
+    }
+
     private Observable<Boolean> sendMessage(MessageBean bean) {
 //        bean.dateTime = new Date();
 //        System.out.println(JSON.toJSONString(bean));
@@ -374,16 +391,21 @@ public class IMService {
                         return Observable.just(false);
                 })
                 .doOnNext(aBoolean -> {
-                    MessageBean notice = new MessageBean(
-                            client.<String>get("username"),
-                            bean.toUser,
-                            bean.group,
-                            new Date(),
-                            MessageType.REPLY_JOIN_GROUP,
-                            aBoolean ? "allow join group" : "reject join group"
-                    );
-                    sendMessage(notice).subscribe();
-                });
+                            if (aBoolean) {
+                                broadcast2OnlineMember(
+                                        new MessageBean(
+                                                client.<String>get("username"),
+                                                null,
+                                                bean.group,
+                                                new Date(),
+                                                MessageType.REPLY_JOIN_GROUP,
+                                                bean.content
+                                        )
+                                ).subscribe();
+
+                            }
+                        }
+                );
     }
 
     /**
@@ -490,17 +512,18 @@ public class IMService {
                         (num1, num2) -> num1 > 0 && num2 > 0
                 ))
                 .doOnNext(success -> rxAssert(success, IMError.TARGET_NOT_EXIST))
-                .doOnNext(aBoolean ->
-                                rxGetUsername(client)
-                                        .flatMap(myName -> sendMessage(
-                                                new MessageBean(
-                                                        myName,
-                                                        bean.member,
-                                                        bean.group,
-                                                        new Date(),
-                                                        MessageType.DELETE_GROUP_MEMBER,
-                                                        "remove member")))
-                                        .subscribe()
+                .doOnNext(aBoolean -> {
+                            broadcast2OnlineMember(
+                                    new MessageBean(
+                                            client.<String>get("username"),
+                                            null,
+                                            bean.group,
+                                            new Date(),
+                                            MessageType.DELETE_GROUP_MEMBER,
+                                            null
+                                    )
+                            ).subscribe();
+                        }
 
                 );
     }
@@ -508,8 +531,8 @@ public class IMService {
     private Observable<String> getSignature(SocketIOClient client) {
         return rxGetUsername(client)
                 .flatMap(myName -> {
-                    if(signatureCache.containsKey(myName))
-                        return Observable.just(signatureCache.get(myName) );
+                    if (signatureCache.containsKey(myName))
+                        return Observable.just(signatureCache.get(myName));
                     return rxRedis.hget("user:" + myName, "signature");
                 });
     }
