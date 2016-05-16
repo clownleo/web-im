@@ -16,6 +16,7 @@ public class User {
     public String publicKey;
     public String keySign;
     public String keyEncrypted;
+    public String isSuspended;
 
     public User(){}
 
@@ -33,6 +34,7 @@ public class User {
         result.put("publicKey", publicKey);
         result.put("keySign", keySign);
         result.put("keyEncrypted", keyEncrypted);
+        result.put("isSuspended", isSuspended);
         result.put("info", JSON.toJSONString(info));
         return result;
     }

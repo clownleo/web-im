@@ -1,5 +1,10 @@
 package me.smilence.service;
 
+import com.alibaba.fastjson.JSON;
+import com.corundumstudio.socketio.AckCallback;
+import com.corundumstudio.socketio.SocketIOClient;
+import com.lambdaworks.redis.RedisClient;
+import com.lambdaworks.redis.api.rx.RedisReactiveCommands;
 import com.lambdaworks.redis.api.sync.RedisCommands;
 import me.smilence.IMError;
 import me.smilence.IMEvent;
@@ -8,16 +13,14 @@ import me.smilence.commons.utils.AES;
 import me.smilence.commons.utils.RxUtils;
 import me.smilence.entity.Group;
 import me.smilence.entity.User;
-import com.alibaba.fastjson.JSON;
-import com.corundumstudio.socketio.AckCallback;
-import com.corundumstudio.socketio.SocketIOClient;
-import com.lambdaworks.redis.RedisClient;
-import com.lambdaworks.redis.api.rx.RedisReactiveCommands;
 import me.smilence.eventbean.*;
 import org.apache.commons.lang3.StringUtils;
 import rx.Observable;
 
-import java.util.*;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -29,15 +32,33 @@ import static me.smilence.commons.utils.RxUtils.rxAssert;
  * Created by leo on 16-5-8.
  */
 public class IMService {
+    private static IMService instance = new IMService();
+
+    public static IMService getInstance() {
+        return instance;
+    }
+
+    private IMService() {
+    }
+
     private static Map<String, SocketIOClient> userOnline = new ConcurrentHashMap<>();
+    private static Map<String, Boolean> groupSuspendedStatus = new ConcurrentHashMap<>();
+    private static Map<String, String> signatureCache = new ConcurrentHashMap<>();
     private static RedisReactiveCommands<String, String> rxRedis = RedisClient
             .create("redis://localhost")
             .connect()
             .reactive();
+
     private static RedisCommands<String, String> redis = RedisClient
             .create("redis://localhost")
             .connect()
             .sync();
+
+    public Observable<String> newStamp(SocketIOClient client) {
+        String uuid = String.valueOf(UUID.randomUUID());
+        client.set("stamp", uuid);
+        return Observable.just(uuid);
+    }
 
     public Observable<Boolean> register(SocketIOClient client, RegisterBean bean) {
         return rxRedis
@@ -48,12 +69,6 @@ public class IMService {
 
     }
 
-    public Observable<String> newStamp(SocketIOClient client) {
-        String uuid = String.valueOf(UUID.randomUUID());
-        client.set("stamp", uuid);
-        return Observable.just(uuid);
-    }
-
     public Observable<Boolean> auth(SocketIOClient client, LoginBean bean) {
         String stamp = client.<String>get("stamp");
         if (stamp == null)
@@ -62,8 +77,11 @@ public class IMService {
         return rxRedis.hget("user:" + bean.username, "keySign")
                 .compose(RxUtils.supportNull(IMError.USERNAME_NOT_EXIST))
                 .doOnNext(keySign -> rxAssert(AES.Encrypt(stamp, keySign).equals(bean.signature), IMError.AUTH_FAIL))
-                .flatMap(ignore -> rxRedis.hexists("user:" + bean.username, "stop"))
-                .doOnNext(isStop -> client.set("isStop", isStop))
+                .flatMap(ignore -> rxRedis.hexists("user:" + bean.username, "isSuspended"))
+                .doOnNext(isSuspended -> {
+                    client.set("isSuspended", isSuspended);
+                    rxAssert(isSuspended, IMError.USER_IS_SUSPENDED);
+                })
                 .doOnNext(ignore -> {
                     client.del("stamp");
                     userOnline.put(bean.username, client);
@@ -73,11 +91,36 @@ public class IMService {
     }
 
     public Observable<Boolean> logout(SocketIOClient client) {
-
         boolean result = client.<String>get("username") != null &&
                 userOnline.remove(client.<String>get("username")) != null;
         client.del("username");
         return Observable.just(result);
+    }
+
+    protected void suspendUser(String username) {
+        if (userOnline.containsKey("username")) {
+            sendMessage(new MessageBean(
+                    null,
+                    username,
+                    null,
+                    new Date(),
+                    MessageType.NOTIFICATION,
+                    "you are suspended"
+            )).subscribe();
+            logout(userOnline.get(username)).subscribe();
+        }
+    }
+
+    protected void changeGroupSuspended(String group) {
+        groupSuspendedStatus.remove(group);
+    }
+
+    private Observable<Boolean> isGroupSuspended(String group) {
+        if (groupSuspendedStatus.containsKey(group))
+            return Observable.just(groupSuspendedStatus.get(group));
+
+        return rxRedis.hexists("group:" + group, "isSUspended")
+                .doOnNext(isSupended -> groupSuspendedStatus.put(group, isSupended));
     }
 
     public Observable<Boolean> setKeyBak(SocketIOClient client, KeyBckBean bean) {
@@ -110,7 +153,12 @@ public class IMService {
     }
 
     public Observable<String> getPublicKey(SocketIOClient client, String username) {
-        return rxRedis.hget("user:" + username, "publicKey")
+        return Observable
+                .zip(
+                        rxRedis.hget("user:" + username, "publicKey"),
+                        getSignature(client),
+                        AES::Encrypt
+                )
                 .compose(RxUtils.supportNull(IMError.USERNAME_NOT_EXIST));
     }
 
@@ -142,8 +190,10 @@ public class IMService {
     }
 
     public Observable<Boolean> send2GroupMember(SocketIOClient client, MessageBean bean) {
-        bean.type = MessageType.FRIEND_MESSAGE;
-        return rxGetUsername(client)
+        bean.type = MessageType.GROUP_MESSAGE;
+        return isGroupSuspended(bean.group)
+                .doOnNext(isSuspended -> rxAssert(isSuspended, IMError.GROUP_IS_SUSPENDED))
+                .flatMap(ignore -> rxGetUsername(client))
                 .flatMap(myName -> Observable.zip(
                         rxRedis.sismember(bean.group + ":members", myName),
                         rxRedis.sismember(bean.group + ":members", bean.toUser),
@@ -329,7 +379,7 @@ public class IMService {
                             bean.toUser,
                             bean.group,
                             new Date(),
-                            MessageType.REPLY_ADD_FRIEND,
+                            MessageType.REPLY_JOIN_GROUP,
                             aBoolean ? "allow join group" : "reject join group"
                     );
                     sendMessage(notice).subscribe();
@@ -455,6 +505,15 @@ public class IMService {
                 );
     }
 
+    private Observable<String> getSignature(SocketIOClient client) {
+        return rxGetUsername(client)
+                .flatMap(myName -> {
+                    if(signatureCache.containsKey(myName))
+                        return Observable.just(signatureCache.get(myName) );
+                    return rxRedis.hget("user:" + myName, "signature");
+                });
+    }
+
     public void startMsgQueue() {
         if (msgQueueStarted) return;
         Observable.interval(10, TimeUnit.MILLISECONDS)
@@ -493,7 +552,6 @@ public class IMService {
                 .doOnError(throwable -> restartOfflineQueue())
                 .subscribe();
     }
-
 
 
     private void restartOfflineQueue() {

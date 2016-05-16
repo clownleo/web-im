@@ -83,7 +83,7 @@ public class WebIMBootstrap {
         socketIOServer.addConnectListener(socketIOClient -> Log.debug("client[{}] connected", socketIOClient.getSessionId().toString()));
         socketIOServer.addDisconnectListener(socketIOClient -> Log.debug("client[{}] disconnected", socketIOClient.getSessionId().toString()));
 
-        imService = new IMService();
+        imService = IMService.getInstance();
         bindEvent();
     }
 
