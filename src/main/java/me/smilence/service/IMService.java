@@ -183,6 +183,7 @@ public class IMService {
     }
 
     public Observable<Boolean> send2Friend(SocketIOClient client, MessageBean bean) {
+        bean.dateTime = new Date();
         bean.type = MessageType.FRIEND_MESSAGE;
         return rxGetUsername(client)
                 .flatMap(username -> rxRedis.sismember(username + ":friends", bean.toUser))
@@ -191,6 +192,7 @@ public class IMService {
     }
 
     public Observable<Boolean> send2GroupMember(SocketIOClient client, MessageBean bean) {
+        bean.dateTime = new Date();
         bean.type = MessageType.GROUP_MESSAGE;
         return isGroupSuspended(bean.group)
                 .doOnNext(isSuspended -> rxAssert(isSuspended, IMError.GROUP_IS_SUSPENDED))

@@ -63,13 +63,13 @@
     var friendMsg = {};
     var groupMsg = {};
     var defaultFriendMsgHandler = function (msg) {
-        $("li.xxim_childnode:eq(0)")
-            .find('.xxim_chatlist > li[data-id=' + msg.from_user + ']')
+        $("ul.xxim_list:eq(0)")
+            .find('li.xxim_childnode[data-id=' + msg.from_user + ']')
             .addClass('has_msg');
     };
     var defaultGroupMsgHandler = function (msg) {
-        $("li.xxim_childnode:eq(1)")
-            .find('.xxim_chatlist > li[data-id=' + msg.group + ']')
+        $("ul.xxim_list:eq(1)")
+            .find('li.xxim_childnode[data-id=' + msg.group + ']')
             .addClass('has_msg');
     };
 
@@ -682,13 +682,14 @@
                         .subscribe(function (msg) {
                             groupMsg[msg.group] = groupMsg[msg.group] || [];
                             groupMsg[msg.group].push(msg);
-
+                            groupMsgHandler[msg.group](msg);
                         });
                     client.onMsg()
                         .filter(msg => msg.type == client.messageType.FRIEND_MESSAGE)
                         .subscribe(function (msg) {
                             friendMsg[msg.from_user] = friendMsg[msg.from_user] || [];
                             friendMsg[msg.from_user].push(msg);
+                            friendMsgHandler[msg.from_user](msg);
                         });
 
                 },
