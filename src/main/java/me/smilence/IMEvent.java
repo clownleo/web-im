@@ -21,7 +21,7 @@ public class IMEvent {
             REMOVE_FRIEND = "remove friend",
             SEND_TO_FRIEND = "send to friend",
             SEND_TO_GROUP_MEMBER = "send to group member",
-            GET_FRIENDS = "get friends",
+            GET_FRIENDS  = "get friends",
             ADD_GROUP = "add group",
             JOIN_GROUP = "join group",
             REPLY_OF_JOIN_GROUP = "reply of join group",
