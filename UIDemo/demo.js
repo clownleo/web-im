@@ -500,15 +500,14 @@
 
         if (param.type === 'group') {
             //去除小红点
-            $("li.xxim_childnode:eq(1)")
-                .find('.xxim_chatlist > li[data-id=' + xxim.nowchat.id + ']')
+            $("ul.xxim_list:eq(1)")
+                .find('li.xxim_childnode[data-id=' + xxim.nowchat.id + ']')
                 .removeClass('has_msg');
-
             groupMsgHandler[xxim.nowchat.id] = msgHandler;
         } else {
             //去除小红点
-            $("li.xxim_childnode:eq(0)")
-                .find('.xxim_chatlist > li[data-id=' + xxim.nowchat.id + ']')
+            $("ul.xxim_list:eq(0)")
+                .find('li.xxim_childnode[data-id=' + xxim.nowchat.id + ']')
                 .removeClass('has_msg');
             friendMsgHandler[xxim.nowchat.id] = msgHandler;
         }
