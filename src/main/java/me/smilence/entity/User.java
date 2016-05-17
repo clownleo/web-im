@@ -34,7 +34,8 @@ public class User {
         result.put("publicKey", publicKey);
         result.put("keySign", keySign);
         result.put("keyEncrypted", keyEncrypted);
-        result.put("isSuspended", isSuspended);
+        if(isSuspended != null)
+            result.put("isSuspended", isSuspended);
         result.put("info", JSON.toJSONString(info));
         return result;
     }
@@ -45,6 +46,7 @@ public class User {
         u.publicKey = result.get("publicKey");
         u.keySign = result.get("keySign");
         u.keyEncrypted = result.get("keyEncrypted");
+        u.isSuspended = result.get("isSuspended");
         u.info = JSON.parseObject(result.get("info"));
         return u;
     }

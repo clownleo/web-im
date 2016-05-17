@@ -52,6 +52,7 @@ public class RxUtils {
 
                         @Override
                         public void onError(Throwable throwable) {
+                            throwable.printStackTrace();
                             subscriber.onError(throwable);
                         }
 

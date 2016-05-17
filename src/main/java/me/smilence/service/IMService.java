@@ -79,6 +79,7 @@ public class IMService {
                 .doOnNext(keySign -> rxAssert(AES.Encrypt(stamp, keySign).equals(bean.signature), IMError.AUTH_FAIL))
                 .flatMap(ignore -> rxRedis.hexists("user:" + bean.username, "isSuspended"))
                 .doOnNext(isSuspended -> {
+                    System.out.println(isSuspended.getClass().getSimpleName());
                     client.set("isSuspended", isSuspended);
                     rxAssert(!isSuspended, IMError.USER_IS_SUSPENDED);
                 })
@@ -533,7 +534,7 @@ public class IMService {
                 .flatMap(myName -> {
                     if (signatureCache.containsKey(myName))
                         return Observable.just(signatureCache.get(myName));
-                    return rxRedis.hget("user:" + myName, "signature");
+                    return rxRedis.hget("user:" + myName, "keySign");
                 });
     }
 

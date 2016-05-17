@@ -64,12 +64,13 @@ var utils = {
         var eventListening = {};
 
         client.rxOn = function (event) {
-            var args = Array.prototype.slice.call(arguments, 0);
             if (eventListening[event])
                 return eventListening[event];
 
             return eventListening[event] = Rx.Observable.create(function (subscriber) {
                 client.on(event, function (data, ack) {
+                    console.log('event:');
+                    console.log(data);
                     subscriber.onNext(data);
                     ack();
                 });
@@ -88,7 +89,7 @@ var clientIO = function () {
     });
     var userPrivateKey;
     var userRSA;
-    var userKeyEncrypt;
+    var userKeySign;
     var myUsername;
     var chatEncryptKeyArr = [];
     var chatDecryptKeyArr = [];
@@ -107,7 +108,7 @@ var clientIO = function () {
         EXIT_GROUP: 9,
         NOTIFICATION: 10
     };
-    
+
     var IMERROR = {
         "-1": "格式错误",
         "4001": "用户名已存在",
@@ -193,8 +194,9 @@ var clientIO = function () {
             return Rx.Observable.just(publicKeyArr[username]);
         }
         return client.rxEmit(IMEVENT.GET_PUBLIC_KEY, username)
-            .doOnNext(function (key) {
-                publicKeyArr[username] = key;
+            .map(function (key) {
+                key = CryptoJS.decryptAES4Java(key , userKeySign);
+                return publicKeyArr[username] = key;
             });
     };
     var register = function (localhostRan, user) {
@@ -247,7 +249,7 @@ var clientIO = function () {
                 var key = CryptoJS.decryptAES4Java(enk, inputUser.pwd);
                 var key_sign = SHA256(key);
                 userPrivateKey = key;
-                userKeyEncrypt = key_sign;
+                userKeySign = key_sign;
                 userRSA = cryptico.generateRSAKey(userPrivateKey, 1024);
                 return CryptoJS.encryptAES4Java(stamp, key_sign);
             }
@@ -278,7 +280,7 @@ var clientIO = function () {
                     .doOnNext(function () {
                         console.log("set key bck success");
                         userPrivateKey = null;
-                        userKeyEncrypt = null;
+                        userKeySign = null;
                         userRSA = null;
                     })
             });
@@ -301,7 +303,7 @@ var clientIO = function () {
                     .doOnNext(function () {
                         console.log("reset key success");
                         userPrivateKey = null;
-                        userKeyEncrypt = null;
+                        userKeySign = null;
                         userRSA = null;
                     })
             });
@@ -309,7 +311,7 @@ var clientIO = function () {
 
     var logout = function () {
         userPrivateKey = null;
-        userKeyEncrypt = null;
+        userKeySign = null;
         userRSA = null;
         client.rxEmit(IMEVENT.LOGOUT).subscribe();
     };
@@ -365,13 +367,16 @@ var clientIO = function () {
     var decryptMessage = function (message) {
         return getChatKey(message.from_user)
             .map(function (chatKey) {
+                message = utils.clone(message);
                 message.content = CryptoJS.decryptAES4Java(message.content, chatKey);
                 return message;
             })
     };
 
+
+    var msgStream;
     var onMsg = function () {
-        return client
+        return msgStream || (msgStream = client
             .rxOn(IMEVENT.MSG_SYNC)
             .flatMap(function (message) {
                 switch (message.type) {
@@ -380,7 +385,7 @@ var clientIO = function () {
                     default :
                         return Rx.Observable.just(message);
                 }
-            });
+            }) );
     };
 
     var getFriendsList = function () {
@@ -446,21 +451,24 @@ var clientIO = function () {
 
         addFriend: addFriend,
         replyAddFriend: replyAddFriend,
-        getFriendsList: getFriendsList,
+        getFriends: getFriendsList,
         deleteFriend: deleteFriend,
         removeMemberOfGroup: removeMemberOfGroup,
         exitGroup: exitGroup,
-        getListOfGroups: getListOfGroups,
+        getGroups: getListOfGroups,
 
         addGroup: addGroup,
         joinGroup: joinGroup,
         replyOfJoinGroup: replyOfJoinGroup,
-        getMembersOfGroup: getMembersOfGroup
+        getMembersOfGroup: getMembersOfGroup,
+
+        IMError: IMERROR,
+        IMEvent: IMEVENT
     }
 };
 
-var client = clientIO();
-client.onMsg().subscribe(data => console.log(data));
+
+//client.onMsg().subscribe(data => console.log(data));
 //client.register(true,{username:"abc",pwd:"abc"}).subscribe(()=>{},(error)=>{});
 //client.login({username: 'abc', pwd: 'abc'}).subscribe(()=>{},(error)=>console.log("error:"+error.code));
 //client.setPwdBck({username: 'abc', pwd: 'abc',pwd_bck:'臭包'}).subscribe(()=>{},(error)=>console.log("error:"+error));
@@ -474,7 +482,7 @@ client.onMsg().subscribe(data => console.log(data));
 //client.register(true,{username:"kiss",pwd:"abc"}).subscribe(()=>{},(error)=>{});
 //client.login({username: 'kiss', pwd: 'abc'}).subscribe(()=>{},(error)=>console.log("error:"+error.code));
 
-//client.getFriendsList().subscribe((data)=>{console.log(data)})
+//client.getFriends().subscribe((data)=>{console.log(data)})
 //client.deleteFriend('abc').subscribe((data)=>console.log(data))
 //client.getSbPublicKey('abc').subscribe((data)=>{console.log(data)})
 
@@ -488,7 +496,7 @@ client.onMsg().subscribe(data => console.log(data));
 
 //client.removeMemberOfGroup({group:'smilence',member:'kiss'}).subscribe((data)=>console.log(data));
 //client.exitGroup('smilence').subscribe((data)=>console.log(data);
-//client.getListOfGroups().subscribe((data)=>console.log(data));
+//client.getGroups().subscribe((data)=>console.log(data));
 
 //Rx.Observable.from([1,2,3]).map((x)=>{return x+2}).subscribe((data)=>console.log(data));
 //client.sendGroupMessage({group:'smilence',from_user:'abc',content:'群聊啦～'}).subscribe((data)=>console.log(data))
