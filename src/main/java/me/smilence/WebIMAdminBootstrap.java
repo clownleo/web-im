@@ -165,40 +165,11 @@ public class WebIMAdminBootstrap {
     public void run() {
         socketIOServer.start();
         Runtime.getRuntime().addShutdownHook(new Thread(socketIOServer::stop));
-        System.err.println("Web-IM Service start...");
+        System.err.println("Web-IM Admin Service start...");
     }
 
     public static void main(String[] args) {
         new WebIMAdminBootstrap().run();
-    }
-
-
-    /**
-     * 获取当前总线程数
-     */
-    public static Thread[] findAllThreads() {
-        ThreadGroup group =
-                Thread.currentThread().getThreadGroup();
-        ThreadGroup topGroup = group;
-
-        // 遍历线程组树，获取根线程组
-        while (group != null) {
-            topGroup = group;
-            group = group.getParent();
-        }
-        // 激活的线程数加倍
-        int estimatedSize = topGroup.activeCount() * 2;
-        Thread[] slackList = new Thread[estimatedSize];
-        //获取根线程组的所有线程
-        int actualSize = topGroup.enumerate(slackList);
-        // copy into a list that is the exact size
-        Thread[] list = new Thread[actualSize];
-        System.arraycopy(slackList, 0, list, 0, actualSize);
-        return list;
-    }
-
-    static {
-        InfoMonitor.addTask(() -> String.format("当前总共线程数%d", findAllThreads().length));
     }
 
     interface BaseListener<T extends AdminEventBean> extends DataListener<T> {
@@ -206,8 +177,8 @@ public class WebIMAdminBootstrap {
 
         @Override
         default void onData(SocketIOClient client, T data, AckRequest ackSender) throws Exception {
-            if(adminService.validate(client, data.signature))
-                ackSender.sendAckData(IMError.AUTH_FAIL);
+            if(!adminService.validate(client, data.signature))
+                ackSender.sendAckData(IMError.AUTH_FAIL.getCode());
             else
                 on(client, data, ackSender);
         }

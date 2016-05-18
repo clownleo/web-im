@@ -1,31 +1,153 @@
-
 <!doctype html>
 <html>
 <head>
-<meta charset="utf-8"/>
-<title>admin Demo</title>
+    <meta charset="utf-8"/>
+    <title>admin Demo</title>
 </head>
 <link href="css/bootstrap.min.css" type="text/css" rel="stylesheet"/>
+<link href="css/toastr.css" type="text/css" rel="stylesheet">
 <body>
-    <div class="tabs">
-        <div class="tab" id="user_manager">
-            <label for="username">username:</label><input id="username" type="text" /><br>
-            <button id="rm_user">删除用户</button>
-            <button id="ssp_user">封禁用户</button>
-            <button id="ussp_user">解禁用户</button>
-        </div>
-        <div class="tab" id="group_manager">
-            <label for="group-name">group-name:</label><input id="group-name" type="text" /><br>
-            <button id="rm_group">删除群组</button>
-            <button id="ssp_group">封禁群组</button>
-            <button id="ussp_group">解禁群组</button>
-        </div>
+<div style="text-align: center">
+    <div class="container-fluid" style="margin: 100px auto;">
+        <label for="id">ID:</label><input id="id" class="input-sm" style="margin: 10px;" type="text"/><br>
+        <button id="rm_user" class="btn btn-primary">删除用户</button>
+        <button id="ssp_user" class="btn btn-primary">封禁用户</button>
+        <button id="ussp_user" class="btn btn-primary">解禁用户</button>
+        <button id="rm_group" class="btn btn-primary">删除群组</button>
+        <button id="ssp_group" class="btn btn-primary">封禁群组</button>
+        <button id="ussp_group" class="btn btn-primary">解禁群组</button>
     </div>
+</div>
 
 
 <script type="text/javascript" src="JSSDK/jquery.min.js"></script>
 <script type="text/javascript" src="bootstrap.min.js"></script>
-    
-<!--<script src="lay/layim.js"></script>-->
+<script type="text/javascript" src="JSSDK/socket.io.js"></script>
+<script type="text/javascript" src="toastr.js"></script>
+<script type="text/javascript" src="JSSDK/cryptico.js"></script>
+<script type="text/javascript" src="JSSDK/rx.all.js"></script>
+<script>
+    var key='zi7uxcvybsdknf';
+    /**
+     * socket.io-client Rx化支持
+     */
+    (function () {
+        var old_io = io;
+        io = function () {
+            var args = Array.prototype.slice.call(arguments, 0);
+            var client = old_io.apply(this, args);
+
+            client.rxEmit = function () {
+                var args = Array.prototype.slice.call(arguments, 0);
+                return Rx.Observable.create(function (subscriber) {
+                    args.push(function (code, data) {
+                        if (code != 0) {
+                            console.log("RxEmit error:" + code + ",data:" + data);
+                            subscriber.onError({
+                                code: code,
+                                data: data
+                            });
+                            return;
+                        }
+                        subscriber.onNext(data);
+                        subscriber.onCompleted();
+                    });
+
+                    client.emit.apply(client, args);
+                });
+            };
+            return client;
+        }
+
+    })();
+
+    var client = io("ws://localhost:9091", {
+        rememberUpgrade: true
+    });
+
+    $('#rm_user').on('click',function(){
+        var id = $('#id').val();
+        client.rxEmit('new stamp')
+                .map(function(stamp) {
+                    return SHA256(key + ":" + stamp);
+                })
+                .flatMap(function(sign){
+                    return client.rxEmit('remove user',{
+                        signature: sign,
+                        user: id
+                    })
+                }).subscribe(() => toastr.success("success"), (data) => toastr.error(data.code + "error"));
+    });
+    $('#ssp_user').on('click',function(){
+        var id = $('#id').val();
+        client.rxEmit('new stamp')
+                .map(function(stamp) {
+                    return SHA256(key + ":" + stamp)
+                })
+                .flatMap(function(sign){
+                    return client.rxEmit('suspend user',{
+                        signature: sign,
+                        user: id
+                    })
+                }).subscribe(() => toastr.success("success"), (data) => toastr.error(data.code + "error"));
+
+    });
+    $('#ussp_user').on('click',function(){
+        var id = $('#id').val();
+        client.rxEmit('new stamp')
+                .map(function(stamp) {
+                    return SHA256(key + ":" + stamp)
+                })
+                .flatMap(function(sign){
+                    return client.rxEmit('unsuspend user',{
+                        signature: sign,
+                        user: id
+                    })
+                }).subscribe(() => toastr.success("success"), (data) => toastr.error(data.code + "error"));
+
+    });
+    $('#rm_group').on('click',function(){
+        var id = $('#id').val();
+        client.rxEmit('new stamp')
+                .map(function(stamp) {
+                    return SHA256(key + ":" + stamp)
+                })
+                .flatMap(function(sign){
+                    return client.rxEmit('remove group',{
+                        signature: sign,
+                        group: id
+                    })
+                }).subscribe(() => toastr.success("success"), (data) => toastr.error(data.code + "error"));
+
+    });
+    $('#ssp_group').on('click',function(){
+        var id = $('#id').val();
+        client.rxEmit('new stamp')
+                .map(function(stamp) {
+                    return SHA256(key + ":" + stamp)
+                })
+                .flatMap(function(sign){
+                    return client.rxEmit('suspend group',{
+                        signature: sign,
+                        group: id
+                    })
+                }).subscribe(() => toastr.success("success"), (data) => toastr.error(data.code + "error"));
+
+    });
+    $('#ussp_group').on('click',function(){
+        var id = $('#id').val();
+        client.rxEmit('new stamp')
+                .map(function(stamp) {
+                    return SHA256(key + ":" + stamp)
+                })
+                .flatMap(function(sign){
+                    return client.rxEmit('unsuspend group',{
+                        signature: sign,
+                        group: id
+                    })
+                }).subscribe(() => toastr.success("success"), (data) => toastr.error(data.code + "error"));
+
+    });
+</script>
 </body>
 </html>

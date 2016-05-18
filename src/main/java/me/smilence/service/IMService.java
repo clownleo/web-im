@@ -112,20 +112,6 @@ public class IMService {
         }
     }
 
-    protected void deleteUser(String username) {
-        if (userOnline.containsKey("username")) {
-            sendMessage(new MessageBean(
-                    null,
-                    username,
-                    null,
-                    new Date(),
-                    MessageType.NOTIFICATION,
-                    "you are deleted"
-            )).subscribe();
-            logout(userOnline.get(username)).subscribe();
-        }
-    }
-
     protected void changeGroupSuspended(String group) {
         groupSuspendedStatus.remove(group);
     }
@@ -197,7 +183,7 @@ public class IMService {
     }
 
     public Observable<Boolean> send2Friend(SocketIOClient client, MessageBean bean) {
-        bean.dateTime = new Date();
+        bean.dateTime = new
         bean.type = MessageType.FRIEND_MESSAGE;
         return rxGetUsername(client)
                 .flatMap(username -> rxRedis.sismember(username + ":friends", bean.toUser))
@@ -206,7 +192,6 @@ public class IMService {
     }
 
     public Observable<Boolean> send2GroupMember(SocketIOClient client, MessageBean bean) {
-        bean.dateTime = new Date();
         bean.type = MessageType.GROUP_MESSAGE;
         return isGroupSuspended(bean.group)
                 .doOnNext(isSuspended -> rxAssert(isSuspended, IMError.GROUP_IS_SUSPENDED))
@@ -402,8 +387,7 @@ public class IMService {
                         return Observable.merge(
                                 rxRedis.sadd(bean.toUser + ":myGroups", bean.group),
                                 rxRedis.sadd(bean.group + ":members", bean.toUser)
-                        ).all(rs -> rs > 0
-                        );
+                        ).all(rs -> rs > 0);
                     } else
                         return Observable.just(false);
                 })
@@ -420,6 +404,17 @@ public class IMService {
                                         )
                                 ).subscribe();
 
+                            }
+                            else {
+                                sendMessage(new MessageBean(
+                                                client.<String>get("username"),
+                                                bean.toUser,
+                                                bean.group,
+                                                new Date(),
+                                                MessageType.REPLY_JOIN_GROUP,
+                                                bean.content
+                                        )
+                                );
                             }
                         }
                 );

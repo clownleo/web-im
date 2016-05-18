@@ -429,6 +429,7 @@ public class WebIMBootstrap {
 
     public static void main(String[] args) {
         new WebIMBootstrap().run();
+        new WebIMAdminBootstrap().run();
     }
 
 
