@@ -115,7 +115,8 @@
             xximSearch: $('#xxim_searchkey'),
             searchMian: $('#xxim_searchmain'),
             closeSearch: $('#xxim_closesearch'),
-            layimMin: $('#layim_min')
+            layimMin: $('#layim_min'),
+            applyAdd: $('#applyAdd')
         };
     };
 
@@ -174,6 +175,14 @@
         node.xximon.on('click', xxim.expend);
         node.xximHide.on('click', xxim.expend);
 
+        //添加好友/群组按钮
+        node.applyAdd.on('click', function () {
+            jQuery('#myModal').modal('hide');
+            var type = $('input[name=addType][checked]').val();
+            var id = $('#addName').val();
+            xxim.applyAdd(type, id);
+        });
+
         //搜索
         node.xximSearch.keyup(function () {
             var val = $(this).val().replace(/\s/g, '');
@@ -212,6 +221,25 @@
             $('#layim_sendtype').hide();
         });
     };
+
+    xxim.applyAdd = function (type, id) {
+        if (type == 'friend') {
+            client.addFriend({to_user: id}).subscribe(
+                function () {
+                    toastr.success('apply success');
+                }, function (result) {
+                    toastr.error('apply error:' + client.IMError[result.code]);
+                });
+        } else if (type == 'group') {
+            client.joinGroup({group: id}).subscribe(
+                function () {
+                    toastr.success('apply success');
+                }, function (result) {
+                    toastr.error('apply error:' + client.IMError[result.code]);
+                });
+        }
+    };
+
     //请求列表数据
     xxim.getDates = function (index) {
         var api = [client.getFriends, client.getGroups],
@@ -490,11 +518,13 @@
 
         var msgHandler = function (msg) {
             imarea.append(log_html({
-                time: item.date_time,
-                name: item.from_user,
+                time: msg.date_time,
+                name: msg.from_user,
                 face: config.user.face,
-                content: item.content
+                content: msg.content
             }));
+
+            imarea.scrollTop(imarea[0].scrollHeight);
         };
 
         if (param.type === 'group') {
@@ -545,7 +575,7 @@
                 log.imarea = xxim.chatbox.find('#layim_area' + keys);
 
                 log.imarea.append(log_html({
-                    time: '2014-04-26 0:37',
+                    time: utils.date(),
                     name: config.user.name,
                     face: config.user.face,
                     content: data.content
@@ -614,7 +644,7 @@
             + '  <ul class="xxim_list xxim_searchmain" id="xxim_searchmain"></ul>'
             + '</div>'
             + '<ul class="xxim_bottom" id="xxim_bottom">'
-            + '<li class="xxim_online" id="xxim_online">添加'
+            + '<li class="xxim_online" id="xxim_online" data-toggle="modal" data-target="#myModal">添加'
                 //+'</li><li class="layim_errors">没有群员</li>'
             + '<li class="xxim_mymsg" id="xxim_mymsg" title="我的私信"><i></i></li>'
             + '<li class="xxim_seter" id="xxim_seter" title="设置">'

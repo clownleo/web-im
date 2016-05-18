@@ -29,6 +29,12 @@ var utils = {
     },
     logger: function () {
         console.log.apply(console, Array.prototype.slice(arguments, 0));
+    },
+    date: function(){
+        var date = new Date();
+        var dateStr = date.getFullYear() + "-" + (date.getMonth()+1) + "-" + date.getDate();
+        dateStr += " " + date.getHours() + ":" + date.getMinutes() +  ":" + date.getSeconds();
+        return dateStr;
     }
 };
 

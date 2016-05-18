@@ -7,6 +7,7 @@
 </head>
 <link href="css/layim.css" type="text/css" rel="stylesheet"/>
 <link href="css/bootstrap.min.css" type="text/css" rel="stylesheet"/>
+<link href="css/toastr.css" type="text/css" rel="stylesheet">
 <body>
     <div id="login" style="align-content: center;margin: 20px auto;width: 300px">
         <h2>登&nbsp;&nbsp;录</h2>
@@ -26,19 +27,47 @@
             <a href="javascript:void(0);" style="float: right;margin: 30px auto;font-size: 13px;text-decoration: none;color: gray;">去登录</a>
         </div>
     </div>
-
-
-<script type="text/javascript" src="JSSDK/jquery.min.js"></script>
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog"
+         aria-labelledby="myModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close"
+                            data-dismiss="modal" aria-hidden="true">
+                        &times;
+                    </button>
+                    <h4 class="modal-title" id="myModalLabel">
+                        添加好友/群组
+                    </h4>
+                </div>
+                <div class="modal-body">
+                    <label>类别：</label>
+                    <input checked="checked" type="radio" name="addType" value="friend">添加好友
+                    <input type="radio" name="addType" value="group">添加群组<br/>
+                    <label>标识：</label><input id="addName" type="text" style="margin: 10px auto;"><br/>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default"
+                            data-dismiss="modal">关闭
+                    </button>
+                    <button id="applyAdd" type="button" class="btn btn-primary">
+                        申请添加
+                    </button>
+                </div>
+            </div><!-- /.modal-content -->
+        </div>
+    </div>
+<script src="lay/lib.js"></script>
+<script src="lay/layer/layer.min.js"></script>
+<!--<script type="text/javascript" src="JSSDK/jquery.min.js"></script>-->
 <script type="text/javascript" src="bootstrap.min.js"></script>
+<script type="text/javascript" src="toastr.js"></script>
 <script type="text/javascript" src="JSSDK/rx.all.js"></script>
 <script type="text/javascript" src="JSSDK/cryptico.js"></script>
 <script type="text/javascript" src="JSSDK/aes.js"></script>
 <script type="text/javascript" src="JSSDK/cryptojs.hash.ex.js"></script>
 <script type="text/javascript" src="JSSDK/socket.io.js"></script>
 <script type="text/javascript" src="JSSDK/IM_JSSDK.js"></script>
-<script src="lay/lib.js"></script>
-<script src="lay/layer/layer.min.js"></script>
 <script src="demo.js"></script>
-<!--<script src="lay/layim.js"></script>-->
 </body>
 </html>

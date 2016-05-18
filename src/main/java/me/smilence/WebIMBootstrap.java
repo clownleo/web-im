@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 
@@ -38,7 +39,7 @@ public class WebIMBootstrap {
     public void init() {
         Configuration config = new Configuration();
         SimpleModule module = new SimpleModule();
-        module.addSerializer(Date.class, new DateSerializer(false, DateFormat.getTimeInstance()));
+        module.addSerializer(Date.class, new DateSerializer(false, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")));
         config.setJsonSupport(new JacksonJsonSupport(module));
         config.setAckMode(AckMode.MANUAL);
         //设置支持的传输方式,建议尽可能只是用websocket

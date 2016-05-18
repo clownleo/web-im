@@ -62,7 +62,7 @@ li{list-style:none;}
 .xxim_bottom li{position:relative; width:50px; height:32px; line-height:32px; float:left; border-right:1px solid #D0DCF3;  cursor:pointer;}
 .xxim_bottom li i{ top:11px;}
 .xxim_bottom .xxim_hide{border-right:none;}
-.xxim_bottom .xxim_online{width:42px; padding-left:30px;padding-right: 5px;}
+.xxim_bottom .xxim_online{width:72px; padding-left:25px;padding-right: 5px;}
 .xxim_online i{left:13px; width:12px; height:12px; background-position:-50px -5px;}
 .xxim_setonline{display:none; position:absolute; left:-79px; bottom:-1px;  border:1px solid #DCDCDC; background-color:#fff;}
 .xxim_setonline span{position:relative; display:block; width:32px; padding:0 10px 0 35px;}
