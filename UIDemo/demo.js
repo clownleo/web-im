@@ -73,6 +73,10 @@
             .addClass('has_msg');
     };
 
+    toastr.jqToastr = function (type, $obj, title) {
+        toastr[type]("loading", title).find(".toast-message").html($obj);
+    };
+
     log_html = function (param, type) {
         return '<li class="' + (type === 'me' ? 'layim_chateme' : '') + '">'
             + '<div class="layim_chatuser">'
@@ -677,6 +681,27 @@
             $("#register").hide();
         });
 
+        $("#register button").on("click", function () {
+            var username = $("#register_username").val();
+            var password = $("#register_pwd").val();
+
+            client
+                .register(true, {username: username, pwd: password})
+                .subscribe(
+                function () {
+
+                    toastr.options.timeOut=1000;
+                    toastr.options.extendedTimeOut=500;
+                    toastr.success("register success");
+                    $("#login").show();
+                    $("#register").hide();
+                },
+                function (result) {
+                    alert(client.IMError[result.code]);
+                }
+            );
+        });
+
         $("#login button").on("click", function () {
             var username = $("#login_username").val();
             var password = $("#login_pwd").val();
@@ -685,7 +710,9 @@
                 .login({username: username, pwd: password})
                 .subscribe(
                 function () {
-                    alert("login success");
+                    toastr.options.timeOut=1000;
+                    toastr.options.extendedTimeOut=500;
+                    toastr.success("login success");
                     config.user = { //当前用户信息
                         name: username,
                         face: 'images/1.png'
@@ -719,25 +746,49 @@
                             friendMsg[msg.from_user].push(msg);
                             friendMsgHandler[msg.from_user](msg);
                         });
+                    //<div class="row">阿布添加你为好友</div><br/>
+                    //    <div>
+                    //    <button type="button" id="surpriseBtn" class="btn" style="margin: 0 8px 0 8px">拒绝</button>
+                    //    <button type="button" id="okBtn" class="btn btn-primary">同意</button>
+                    //    </div>
 
-                },
-                function (result) {
-                    alert(client.IMError[result.code]);
-                }
-            );
-        });
 
-        $("#register button").on("click", function () {
-            var username = $("#register_username").val();
-            var password = $("#register_pwd").val();
+                    client.onMsg()
+                        .filter(msg => msg.type == client.messageType.ADD_FRIEND)
+                        .subscribe(function (msg) {
+                            toastr.options.timeOut=0;
+                            toastr.options.extendedTimeOut=0;
+                            var addFriendUI =
+                                $('<div>').addClass('row-fluid').text('“' + msg.from_user + '”添加你为好友').add(
+                                    $('<div>').append(
+                                        $('<button type="button" class="btn col-md-4">拒绝</button>').on('click',function(){
+                                            client.replyAddFriend({
+                                                to_user: msg.from_user,
+                                                content: 'NO'
+                                            });
+                                        })
+                                    ).append(
+                                        $('<button type="button" class="btn btn-primary col-md-4 col-md-offset-1">同意</button>').on('click',function(){
+                                            client.replyAddFriend({
+                                                to_user: msg.from_user,
+                                                content: 'YES'
+                                            });
 
-            client
-                .register(true, {username: username, pwd: password})
-                .subscribe(
-                function () {
-                    alert("register success");
-                    $("#login").show();
-                    $("#register").hide();
+                                        })
+                                    )
+                                );
+                            toastr.jqToastr('info', addFriendUI, '好友申请');
+                        });
+
+                    client.onMsg()
+                        .filter(function(msg) {
+                            return msg.type == client.messageType.REPLY_ADD_FRIEND
+                            || msg.type == client.messageType.REPLY_JOIN_GROUP
+                        })
+                        .subscribe(function (msg) {
+
+                        });
+
                 },
                 function (result) {
                     alert(client.IMError[result.code]);
@@ -772,3 +823,4 @@
     };
 
 }(window);
+
