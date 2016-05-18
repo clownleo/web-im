@@ -112,6 +112,20 @@ public class IMService {
         }
     }
 
+    protected void deleteUser(String username) {
+        if (userOnline.containsKey("username")) {
+            sendMessage(new MessageBean(
+                    null,
+                    username,
+                    null,
+                    new Date(),
+                    MessageType.NOTIFICATION,
+                    "you are deleted"
+            )).subscribe();
+            logout(userOnline.get(username)).subscribe();
+        }
+    }
+
     protected void changeGroupSuspended(String group) {
         groupSuspendedStatus.remove(group);
     }

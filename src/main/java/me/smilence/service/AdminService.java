@@ -63,7 +63,8 @@ public class AdminService {
 
                         ).subscribe()
                 )
-                .map(ignore -> true);
+                .map(ignore -> true)
+                .doOnNext(aBoolean -> imService.deleteUser(username));
     }
 
     public Observable<Boolean> removeGroup(String group) {

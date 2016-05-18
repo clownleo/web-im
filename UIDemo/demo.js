@@ -144,7 +144,6 @@
                 node.layimFooter.removeClass('xxim_expend');
                 node.xximHide.removeClass('xxim_show');
             });
-            friend
             node.layimFooter.stop().animate({marginLeft: 0}, config.aniTime);
         }
     };

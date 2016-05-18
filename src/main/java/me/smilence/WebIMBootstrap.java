@@ -3,6 +3,9 @@ package me.smilence;
 import com.corundumstudio.socketio.*;
 import com.corundumstudio.socketio.listener.DataListener;
 import com.corundumstudio.socketio.listener.ExceptionListener;
+import com.corundumstudio.socketio.protocol.JacksonJsonSupport;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.ser.std.DateSerializer;
 import io.netty.channel.ChannelHandlerContext;
 import me.smilence.commons.utils.InfoMonitor;
 import me.smilence.commons.utils.properties.PropertiesLoader;
@@ -11,6 +14,8 @@ import me.smilence.service.IMService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.text.DateFormat;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -32,6 +37,9 @@ public class WebIMBootstrap {
 
     public void init() {
         Configuration config = new Configuration();
+        SimpleModule module = new SimpleModule();
+        module.addSerializer(Date.class, new DateSerializer(false, DateFormat.getTimeInstance()));
+        config.setJsonSupport(new JacksonJsonSupport(module));
         config.setAckMode(AckMode.MANUAL);
         //设置支持的传输方式,建议尽可能只是用websocket
         config.setTransports(Transport.WEBSOCKET, Transport.POLLING);
