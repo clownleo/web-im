@@ -112,6 +112,20 @@ public class IMService {
         }
     }
 
+    protected void deleteUser(String username) {
+        if (userOnline.containsKey("username")) {
+            sendMessage(new MessageBean(
+                    null,
+                    username,
+                    null,
+                    new Date(),
+                    MessageType.NOTIFICATION,
+                    "you are deleted"
+            )).subscribe();
+            logout(userOnline.get(username)).subscribe();
+        }
+    }
+
     protected void changeGroupSuspended(String group) {
         groupSuspendedStatus.remove(group);
     }
@@ -183,7 +197,7 @@ public class IMService {
     }
 
     public Observable<Boolean> send2Friend(SocketIOClient client, MessageBean bean) {
-        bean.dateTime = new
+        bean.dateTime = new Date();
         bean.type = MessageType.FRIEND_MESSAGE;
         return rxGetUsername(client)
                 .flatMap(username -> rxRedis.sismember(username + ":friends", bean.toUser))
