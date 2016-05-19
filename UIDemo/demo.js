@@ -243,11 +243,11 @@
     };
 
     xxim.setKeyBck = function () {
-        if(!$('#pwd').val()) {
+        if (!$('#pwd').val()) {
             toastr.error('请输入密码', '设置密保');
             return;
         }
-        Rx.Observable.from( $('#set_key_bck .question').toArray() )
+        Rx.Observable.from($('#set_key_bck .question').toArray())
             .map(function (item) {
                 return {
                     key: $(item).val(),
@@ -263,10 +263,12 @@
             })
             .reduce((arr, item) => (arr.push(item), arr), [])
             .map(data =>
-                    data.sort(function (a, b) {return a.key > b.key})
+                data.sort(function (a, b) {
+                    return a.key > b.key
+                })
                     .map(item => item.key + '=' + item.value)
                     .join('&'))
-            .flatMap(function(pwd_bck){
+            .flatMap(function (pwd_bck) {
                 var pwd = $('#pwd').val();
                 return client.setPwdBck({
                     username: config.user.name,
@@ -275,20 +277,18 @@
                 })
             })
             .subscribe(
-                () => '',
-                function (ex) {
-                    toastr.error(client.IMError[ex.code] || ex, '设置密保');
-                },
-                function () {
-                    setTimeout(function () {
-                        $('#set_key_bck').modal('hide');
-                    }, 800);
-                    toastr.success('success', '设置密保');
-                }
+            () => '',
+            function (ex) {
+                toastr.error(client.IMError[ex.code] || ex, '设置密保');
+            },
+            function () {
+                setTimeout(function () {
+                    $('#set_key_bck').modal('hide');
+                }, 800);
+                toastr.success('success', '设置密保');
+            }
         );
     };
-
-
 
 
     xxim.applyAdd = function (type, id) {
@@ -862,6 +862,7 @@
                                                         to_user: msg.from_user,
                                                         content: 'YES'
                                                     }).subscribe();
+                                                    xxim.getDates(0);
 
                                                 })
                                             )
@@ -869,6 +870,7 @@
                                     toastr.jqToastr('info', addFriendUI, '好友申请');
                                     break;
                                 case client.messageType.REPLY_ADD_FRIEND:
+                                    xxim.getDates(0);
                                     toastr.options.timeOut = 0;
                                     toastr.options.extendedTimeOut = 0;
                                     var replyAddGriendUI = $('<div>').addClass('row-fluid').text('“' + msg.from_user + '”回复您的好友申请：' + msg.content);
@@ -901,16 +903,20 @@
                                     toastr.jqToastr('info', joinGroupUI, '入群申请');
                                     break;
                                 case client.messageType.REPLY_JOIN_GROUP:
+                                    xxim.getGroups({type: 'group', id: msg.group});
                                     toastr.options.timeOut = 0;
                                     toastr.options.extendedTimeOut = 0;
                                     var replyJoinGroupUI = $('<div>').addClass('row-fluid').text('“' + msg.from_user + '”回复您的入群申请：' + msg.content);
                                     toastr.jqToastr('info', replyJoinGroupUI, '申请加入' + msg.group + '群组的回复');
                                     break;
                                 case client.messageType.DELETE_FRIEND:
+                                    xxim.getDates(0);
                                     break;
                                 case client.messageType.DELETE_GROUP_MEMBER:
+                                    xxim.getGroups({type: 'group', id: msg.group});
                                     break;
                                 case client.messageType.EXIT_GROUP:
+                                    xxim.getGroups({type: 'group', id: msg.group});
                                     break;
                                 case client.messageType.NOTIFICATION:
                                     toastr.options.timeOut = 0;
@@ -935,6 +941,8 @@
     xxim.getGroups = function (param) {
         var keys = param.type + param.id, str = '',
             groupss = xxim.chatbox.find('#layim_group' + keys);
+        if (!groupss)
+            return;
         groupss.addClass('loading');
         client.getMembersOfGroup(param.id)
             .subscribe(function (data) {
@@ -1002,11 +1010,11 @@
     });
 
     setNewPwd = function () {
-        if(!$("#username").val()){
-            toastr.error('用户名不能为空','设置新密码');
-            return ;
+        if (!$("#username").val()) {
+            toastr.error('用户名不能为空', '设置新密码');
+            return;
         }
-        Rx.Observable.from( $('#set_new_pwd .question').toArray() )
+        Rx.Observable.from($('#set_new_pwd .question').toArray())
             .map(function (item) {
                 return {
                     key: $(item).val(),
@@ -1020,16 +1028,18 @@
                 if (!item.value) {
                     throw '必须填写问题答案'
                 }
-                if(!$('#new_pwd').val()) {
+                if (!$('#new_pwd').val()) {
                     throw '请输入新密码';
                 }
             })
             .reduce((arr, item) => (arr.push(item), arr), [])
             .map(data =>
-                data.sort(function (a, b) {return a.key > b.key})
+                data.sort(function (a, b) {
+                    return a.key > b.key
+                })
                     .map(item => item.key + '=' + item.value)
                     .join('&'))
-            .flatMap(function(pwd_bck){
+            .flatMap(function (pwd_bck) {
                 var newPwd = $('#new_pwd').val();
                 return client.setNewPwd({
                     username: $("#username").val(),

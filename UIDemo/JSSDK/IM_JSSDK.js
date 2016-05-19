@@ -196,7 +196,6 @@ var clientIO = function () {
             }).doOnNext(ignore => delete GettingChatDecryptKeyArr[fromUsername]);
     };
     var getPublicKey = function (username) {
-        //TODO 以key_encrypt为密钥进行AES解密
         if (publicKeyArr[username]) {
             return Rx.Observable.just(publicKeyArr[username]);
         }
@@ -331,6 +330,8 @@ var clientIO = function () {
     };
 
     var replyAddFriend = function (message) {
+        if(message.content == "YES")
+            friends = null;
         return client.rxEmit(IMEVENT.REPLY_OF_ADD_FRIEND, message)
             .doOnNext(function () {
                 console.log("add friend success");
@@ -396,15 +397,30 @@ var clientIO = function () {
             }) );
     };
 
+
     var gettingFriends;
-    var Friends = {}
+    var friends;
+    onMsg()
+        .subscribe(function(message){
+            switch (message.type) {
+                case messageType.REPLY_ADD_FRIEND:
+                    if(message.content == "YES") friends = null;
+                    break;
+                case messageType.REPLY_JOIN_GROUP:
+                    if(message.content == "YES") delete memberListsOfGroups[message.group];
+            }
+        });
+
     var getFriendsList = function () {
-        if(Friends)
-            return Rx.Observable.just(Friends);
+        if(friends)
+            return Rx.Observable.just(friends);
 
         if(gettingFriends)
             return gettingFriends;
-        return gettingFriends = client.rxEmit(IMEVENT.GET_FRIENDS);
+        return gettingFriends = client.rxEmit(IMEVENT.GET_FRIENDS).doOnNext(function($friends){
+            friends=$friends;
+            delete gettingFriends;
+        });
     };
 
     var addGroup = function (group) {

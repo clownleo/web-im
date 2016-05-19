@@ -47,7 +47,7 @@ li{list-style:none;}
 .xxim_list .xxim_liston h5 i{width:8px; height:7px; background-position:-5px -5px;}
 .xxim_list .xxim_liston .xxim_chatlist{display:block;}
 .xxim_chatlist {}
-.xxim_chatlist li{position:relative; height:30px; line-height:30px; padding:5px 10px; font-size:0; cursor:pointer;}
+.xxim_chatlist li{position:relative; height:40px; line-height:30px; padding:5px 10px; font-size:0; cursor:pointer;}
 .xxim_chatlist li:hover{background-color:#F2F4F8}
 .xxim_chatlist li *{display:inline-block; *display:inline; *zoom:1; vertical-align:top; font-size:12px;}
 .xxim_chatlist li span{padding-left:10px; max-width:120px;  overflow:hidden; text-overflow: ellipsis; white-space:nowrap;}

@@ -353,7 +353,7 @@ public class IMService {
                             null,
                             new Date(),
                             MessageType.REPLY_ADD_FRIEND,
-                            aBoolean ? "allow add friend" : "reject add friend"
+                            bean.content
                     );
                     sendMessage(notice).subscribe();
                 });
