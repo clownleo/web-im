@@ -59,7 +59,7 @@ li{list-style:none;}
 /* 主面板底部 */
 .xxim_bottom{height:32px; border-top:1px solid #D0DCF3; background-color:#F2F4F8;padding: 0px;margin-bottom: 0px;}
 .xxim_expend{border-left:1px solid #D0DCF3; border-bottom:1px solid #D0DCF3;}
-.xxim_bottom li{position:relative; width:50px; height:32px; line-height:32px; float:left; border-right:1px solid #D0DCF3;  cursor:pointer;}
+.xxim_bottom li{padding:0 12px;position:relative; width:50px; height:32px; line-height:32px; float:left; border-right:1px solid #D0DCF3;  cursor:pointer;}
 .xxim_bottom li i{ top:11px;}
 .xxim_bottom .xxim_hide{border-right:none;}
 .xxim_bottom .xxim_online{width:72px; padding-left:25px;padding-right: 5px;}
@@ -156,6 +156,16 @@ li.xxim_childnode.has_msg:after {
  background-color: #FF0000;
  border-radius: 50%;
  color: white;
+}
+#set_new_pwd .modal-body input,
+#set_new_pwd .modal-body select,
+#set_new_pwd .modal-body label
+{
+ margin: 3px;
+}
+#set_new_pwd .modal-body label{
+ text-align: right;
+ float: left;
 }
 
 

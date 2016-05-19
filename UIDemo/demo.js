@@ -1,9 +1,10 @@
 /**
+ * UI-demo
  * Created by jimily on 16-5-16.
  */
 
 ;
-!function (win, undefined) {
+!function () {
     var config = {
         msgurl: '私信地址',
         chatlogurl: '聊天记录url前缀',
@@ -108,8 +109,8 @@
 
     //节点
     xxim.renode = function () {
-        var node = xxim.node = {
-            tabs: $('#xxim_tabs>span'),
+        xxim.node = {
+            tabs: $('#xxim_tabs').find('>span'),
             list: $('.xxim_list'),
             online: $('.xxim_online'),
             onlinetex: $('#xxim_onlinetex'),
@@ -120,7 +121,9 @@
             searchMian: $('#xxim_searchmain'),
             closeSearch: $('#xxim_closesearch'),
             layimMin: $('#layim_min'),
-            applyAdd: $('#applyAdd')
+            applyAdd: $('#applyAdd'),
+            createGroup: $("#xxim_createGroup"),
+            setKeyBck: $('#xxim_setKeyBck')
         };
     };
 
@@ -182,9 +185,22 @@
         //添加好友/群组按钮
         node.applyAdd.on('click', function () {
             jQuery('#myModal').modal('hide');
-            var type = $('input[name=addType][checked]').val();
+            var type = $('input:radio[name="addType"]:checked').val();
             var id = $('#addName').val();
             xxim.applyAdd(type, id);
+        });
+
+        //创建群组按钮
+        node.createGroup.on('click', function () {
+            jQuery('#createGroup').modal('hide');
+            var id = $('#createGroupName').val();
+            var info = $('#createGroupInfo').val();
+            xxim.createGroup(id, info);
+        });
+
+        //设置密保
+        node.setKeyBck.on('click', function () {
+            xxim.setKeyBck();
         });
 
         //搜索
@@ -226,7 +242,58 @@
         });
     };
 
+    xxim.setKeyBck = function () {
+        if(!$('#pwd').val()) {
+            toastr.error('请输入密码', '设置密保');
+            return;
+        }
+        Rx.Observable.from( $('#set_key_bck .question').toArray() )
+            .map(function (item) {
+                return {
+                    key: $(item).val(),
+                    value: $(item).parent().find('input').val()
+                }
+            }).doOnNext(function (item) {
+                if (item.key == "unselected") {
+                    throw '必须选择三个问题'
+                }
+                if (!item.value) {
+                    throw '必须填写问题答案'
+                }
+            })
+            .reduce((arr, item) => (arr.push(item), arr), [])
+            .map(data =>
+                    data.sort(function (a, b) {return a.key > b.key})
+                    .map(item => item.key + '=' + item.value)
+                    .join('&'))
+            .flatMap(function(pwd_bck){
+                var pwd = $('#pwd').val();
+                return client.setPwdBck({
+                    username: config.user.name,
+                    pwd: pwd,
+                    pwd_bck: pwd_bck
+                })
+            })
+            .subscribe(
+                () => '',
+                function (ex) {
+                    toastr.error(client.IMError[ex.code] || ex, '设置密保');
+                },
+                function () {
+                    setTimeout(function () {
+                        $('#set_key_bck').modal('hide');
+                    }, 800);
+                    toastr.success('success', '设置密保');
+                }
+        );
+    };
+
+
+
+
     xxim.applyAdd = function (type, id) {
+        toastr.options.timeOut = 1000;
+        toastr.options.extendedTimeOut = 500;
         if (type == 'friend') {
             client.addFriend({to_user: id}).subscribe(
                 function () {
@@ -242,6 +309,15 @@
                     toastr.error('apply error:' + client.IMError[result.code]);
                 });
         }
+    };
+
+    xxim.createGroup = function (id, info) {
+        client.addGroup({groupName: id, info: info}).subscribe(
+            function () {
+                toastr.success('create group success');
+            }, function (result) {
+                toastr.error('create group error:' + client.IMError[result.code]);
+            });
     };
 
     //请求列表数据
@@ -341,7 +417,6 @@
 
             //最小化聊天窗
             xxim.chatbox.find('.layer_setmin').on('click', function () {
-                var indexs = layero.attr('times');
                 layero.hide();
                 node.layimMin.text(xxim.nowchat.name).show();
             });
@@ -354,6 +429,7 @@
 
                 //取消聊天窗消息处理器
                 for (var i in config.chating) {
+                    //noinspection JSUnfilteredForInLoop
                     var obj = config.chating[i];
                     if (obj.type === 'group')
                         groupMsgHandler[obj.id] = defaultGroupMsgHandler;
@@ -413,13 +489,14 @@
             });
 
             //发送热键切换
-            log.sendType = $('#layim_sendtype'), log.sendTypes = log.sendType.find('span');
+            log.sendType = $('#layim_sendtype');
+            log.sendTypes = log.sendType.find('span');
             $('#layim_enter').on('click', function (e) {
                 config.stopMP(e);
                 log.sendType.show();
             });
             log.sendTypes.on('click', function () {
-                log.sendTypes.find('i').text('')
+                log.sendTypes.find('i').text('');
                 $(this).find('i').text('√');
             });
 
@@ -499,9 +576,6 @@
         //点击群员切换聊天窗
         log.chatgroup.on('click', 'ul>li', function () {
             xxim.popchatbox($(this));
-            $("li.xxim_childnode:eq(1)")
-                .find('.xxim_chatlist > li[data-id=' + msg.group + ']')
-                .addClass('has_msg');
         });
 
 
@@ -517,7 +591,8 @@
                     face: config.user.face,
                     content: item.content
                 }, item.me));
-            })
+            });
+            imarea.scrollTop(imarea[0].scrollHeight);
         }
 
         var msgHandler = function (msg) {
@@ -587,7 +662,31 @@
                 node.imwrite.val('').focus();
                 log.imarea.scrollTop(log.imarea[0].scrollHeight);
 
-                client.sendPrivateMessage(data).subscribe();
+                if (xxim.nowchat.type == 'group') {
+                    data.group = data.to_user;
+                    client.sendGroupMessage(data).subscribe(function () {
+                    }, function (rs) {
+                        toastr.options.timeOut = 0;
+                        toastr.options.extendedTimeOut = 0;
+                        toastr.jqToastr('error', client.IMError[rs.code], '系统通知');
+                    }, function () {
+                        data.me = "me";
+                        data.date_time = utils.date();
+                        groupMsg[data.group] = groupMsg[data.group] || [];
+                        groupMsg[data.group].push(data);
+                    });
+                } else {
+                    client.sendPrivateMessage(data).subscribe(function () {
+                        data.me = "me";
+                        data.date_time = utils.date();
+                        friendMsg[data.from_user] = friendMsg[data.from_user] || [];
+                        friendMsg[data.from_user].push(data);
+                    }, function (rs) {
+                        toastr.options.timeOut = 0;
+                        toastr.options.extendedTimeOut = 0;
+                        toastr.jqToastr('error', client.IMError[rs.code], '系统通知');
+                    });
+                }
                 //setTimeout(function () {
                 //    log.imarea.append(log_html({
                 //        time: '2014-04-26 0:38',
@@ -649,9 +748,8 @@
             + '</div>'
             + '<ul class="xxim_bottom" id="xxim_bottom">'
             + '<li class="xxim_online" id="xxim_online" data-toggle="modal" data-target="#myModal">添加'
-                //+'</li><li class="layim_errors">没有群员</li>'
-            + '<li class="xxim_mymsg" id="xxim_mymsg" title="我的私信"><i></i></li>'
-            + '<li class="xxim_seter" id="xxim_seter" title="设置">'
+            + '<li class="xxim_seter" id="xxim_seter" title="创建群组" data-toggle="modal" data-target="#createGroup">创建'
+            + '<li class="xxim_seter" id="xxim_set_key_bck" title="设置密保" data-toggle="modal" data-target="#set_key_bck">'
             + '<i></i>'
             + '<div class="">'
             + '</div>'
@@ -672,7 +770,7 @@
     xxim.init = (function () {
 
         //注册/登录切换
-        $("#login a").on("click", function () {
+        $("#go_to_register").on("click", function () {
             $("#login").hide();
             $("#register").show();
         });
@@ -690,8 +788,8 @@
                 .subscribe(
                 function () {
 
-                    toastr.options.timeOut=1000;
-                    toastr.options.extendedTimeOut=500;
+                    toastr.options.timeOut = 1000;
+                    toastr.options.extendedTimeOut = 500;
                     toastr.success("register success");
                     $("#login").show();
                     $("#register").hide();
@@ -710,8 +808,8 @@
                 .login({username: username, pwd: password})
                 .subscribe(
                 function () {
-                    toastr.options.timeOut=1000;
-                    toastr.options.extendedTimeOut=500;
+                    toastr.options.timeOut = 1000;
+                    toastr.options.extendedTimeOut = 500;
                     toastr.success("login success");
                     config.user = { //当前用户信息
                         name: username,
@@ -732,61 +830,94 @@
                             groupMsgHandler[group] = defaultGroupMsgHandler;
                         });
 
-                    client.onMsg()
-                        .filter(msg => msg.type == client.messageType.GROUP_MESSAGE)
-                        .subscribe(function (msg) {
-                            groupMsg[msg.group] = groupMsg[msg.group] || [];
-                            groupMsg[msg.group].push(msg);
-                            groupMsgHandler[msg.group](msg);
-                        });
-                    client.onMsg()
-                        .filter(msg => msg.type == client.messageType.FRIEND_MESSAGE)
-                        .subscribe(function (msg) {
-                            friendMsg[msg.from_user] = friendMsg[msg.from_user] || [];
-                            friendMsg[msg.from_user].push(msg);
-                            friendMsgHandler[msg.from_user](msg);
-                        });
-                    //<div class="row">阿布添加你为好友</div><br/>
-                    //    <div>
-                    //    <button type="button" id="surpriseBtn" class="btn" style="margin: 0 8px 0 8px">拒绝</button>
-                    //    <button type="button" id="okBtn" class="btn btn-primary">同意</button>
-                    //    </div>
-
 
                     client.onMsg()
-                        .filter(msg => msg.type == client.messageType.ADD_FRIEND)
                         .subscribe(function (msg) {
-                            toastr.options.timeOut=0;
-                            toastr.options.extendedTimeOut=0;
-                            var addFriendUI =
-                                $('<div>').addClass('row-fluid').text('“' + msg.from_user + '”添加你为好友').add(
-                                    $('<div>').append(
-                                        $('<button type="button" class="btn col-md-4">拒绝</button>').on('click',function(){
-                                            client.replyAddFriend({
-                                                to_user: msg.from_user,
-                                                content: 'NO'
-                                            });
-                                        })
-                                    ).append(
-                                        $('<button type="button" class="btn btn-primary col-md-4 col-md-offset-1">同意</button>').on('click',function(){
-                                            client.replyAddFriend({
-                                                to_user: msg.from_user,
-                                                content: 'YES'
-                                            });
+                            switch (msg.type) {
+                                case client.messageType.FRIEND_MESSAGE :
+                                    friendMsg[msg.from_user] = friendMsg[msg.from_user] || [];
+                                    friendMsg[msg.from_user].push(msg);
+                                    friendMsgHandler[msg.from_user](msg);
+                                    break;
+                                case client.messageType.GROUP_MESSAGE:
+                                    groupMsg[msg.group] = groupMsg[msg.group] || [];
+                                    groupMsg[msg.group].push(msg);
+                                    groupMsgHandler[msg.group](msg);
+                                    break;
+                                case client.messageType.ADD_FRIEND:
+                                    toastr.options.timeOut = 0;
+                                    toastr.options.extendedTimeOut = 0;
+                                    var addFriendUI =
+                                        $('<div>').addClass('row-fluid').text('“' + msg.from_user + '”添加你为好友').add(
+                                            $('<div>').append(
+                                                $('<button type="button" class="btn col-md-4">拒绝</button>').on('click', function () {
+                                                    client.replyAddFriend({
+                                                        to_user: msg.from_user,
+                                                        content: 'NO'
+                                                    }).subscribe();
+                                                })
+                                            ).append(
+                                                $('<button type="button" class="btn btn-primary col-md-4 col-md-offset-1">同意</button>').on('click', function () {
+                                                    client.replyAddFriend({
+                                                        to_user: msg.from_user,
+                                                        content: 'YES'
+                                                    }).subscribe();
 
-                                        })
-                                    )
-                                );
-                            toastr.jqToastr('info', addFriendUI, '好友申请');
-                        });
+                                                })
+                                            )
+                                        );
+                                    toastr.jqToastr('info', addFriendUI, '好友申请');
+                                    break;
+                                case client.messageType.REPLY_ADD_FRIEND:
+                                    toastr.options.timeOut = 0;
+                                    toastr.options.extendedTimeOut = 0;
+                                    var replyAddGriendUI = $('<div>').addClass('row-fluid').text('“' + msg.from_user + '”回复您的好友申请：' + msg.content);
+                                    toastr.jqToastr('info', replyAddGriendUI, '好友申请回复');
+                                    break;
+                                case client.messageType.JOIN_GROUP:
+                                    toastr.options.timeOut = 0;
+                                    toastr.options.extendedTimeOut = 0;
+                                    var joinGroupUI =
+                                        $('<div>').addClass('row-fluid').text('“' + msg.from_user + '”申请加入群：' + msg.group).add(
+                                            $('<div>').append(
+                                                $('<button type="button" class="btn col-md-4">拒绝</button>').on('click', function () {
+                                                    client.replyOfJoinGroup({
+                                                        group: msg.group,
+                                                        to_user: msg.from_user,
+                                                        content: 'NO'
+                                                    }).subscribe();
+                                                })
+                                            ).append(
+                                                $('<button type="button" class="btn btn-primary col-md-4 col-md-offset-1">同意</button>').on('click', function () {
+                                                    client.replyOfJoinGroup({
+                                                        group: msg.group,
+                                                        to_user: msg.from_user,
+                                                        content: 'YES'
+                                                    }).subscribe();
 
-                    client.onMsg()
-                        .filter(function(msg) {
-                            return msg.type == client.messageType.REPLY_ADD_FRIEND
-                            || msg.type == client.messageType.REPLY_JOIN_GROUP
-                        })
-                        .subscribe(function (msg) {
-
+                                                })
+                                            )
+                                        );
+                                    toastr.jqToastr('info', joinGroupUI, '入群申请');
+                                    break;
+                                case client.messageType.REPLY_JOIN_GROUP:
+                                    toastr.options.timeOut = 0;
+                                    toastr.options.extendedTimeOut = 0;
+                                    var replyJoinGroupUI = $('<div>').addClass('row-fluid').text('“' + msg.from_user + '”回复您的入群申请：' + msg.content);
+                                    toastr.jqToastr('info', replyJoinGroupUI, '申请加入' + msg.group + '群组的回复');
+                                    break;
+                                case client.messageType.DELETE_FRIEND:
+                                    break;
+                                case client.messageType.DELETE_GROUP_MEMBER:
+                                    break;
+                                case client.messageType.EXIT_GROUP:
+                                    break;
+                                case client.messageType.NOTIFICATION:
+                                    toastr.options.timeOut = 0;
+                                    toastr.options.extendedTimeOut = 0;
+                                    toastr.jqToastr('info', msg.content, '系统通知');
+                                    break;
+                            }
                         });
 
                 },
@@ -821,6 +952,109 @@
                 groupss.html('<li class="layim_errors">请求异常</li>');
             });
     };
+
+    var questionList = [
+        '您母亲的姓名是？',
+        '您父亲的姓名是？',
+        '您配偶的姓名是？',
+        '您的出生地是？',
+        '您父亲的生日是？',
+        '您母亲的生日是？',
+        '您自己的生日是？',
+        '您的偶像是？'
+    ];
+
+    var list = $('.question').on('change', function () {
+        list.each(function (ignore, element) {
+            element = $(element);
+            updateSelect(element);
+        });
+    });
+    var updateSelect = function (element) {
+        var values = list.toArray()
+            .map(item => $(item).val())
+            .filter(val => val != element.val() && val != null && val != "unselected");
+
+        var selectedVal = element.val();
+
+        element.html('');
+
+        if (selectedVal == null || selectedVal == "unselected") {
+            element.append(
+                $('<option selected="selected" value="unselected">-----请选择-----</option>')
+            );
+        }
+
+        questionList
+            .filter(val => !values.includes(val))
+            .forEach(function (item) {
+                element.append(
+                    $('<option>')
+                        .val(item)
+                        .text(item)
+                        .attr('selected', selectedVal == item ? 'selected' : null)
+                );
+            });
+    };
+    list.each(function (ignore, element) {
+        element = $(element);
+        updateSelect(element);
+    });
+
+    setNewPwd = function () {
+        if(!$("#username").val()){
+            toastr.error('用户名不能为空','设置新密码');
+            return ;
+        }
+        Rx.Observable.from( $('#set_new_pwd .question').toArray() )
+            .map(function (item) {
+                return {
+                    key: $(item).val(),
+                    value: $(item).parent().find('input').val()
+                }
+            })
+            .doOnNext(function (item) {
+                if (item.key == "unselected") {
+                    throw '必须选择三个问题'
+                }
+                if (!item.value) {
+                    throw '必须填写问题答案'
+                }
+                if(!$('#new_pwd').val()) {
+                    throw '请输入新密码';
+                }
+            })
+            .reduce((arr, item) => (arr.push(item), arr), [])
+            .map(data =>
+                data.sort(function (a, b) {return a.key > b.key})
+                    .map(item => item.key + '=' + item.value)
+                    .join('&'))
+            .flatMap(function(pwd_bck){
+                var newPwd = $('#new_pwd').val();
+                return client.setNewPwd({
+                    username: $("#username").val(),
+                    newPwd: newPwd,
+                    pwd_bck: pwd_bck
+                })
+            })
+            .subscribe(
+            () => '',
+            function (ex) {
+                toastr.error(client.IMError[ex.code] || ex, '重置密码');
+            },
+            function () {
+                setTimeout(function () {
+                    $('#set_new_pwd').modal('hide');
+                }, 800);
+                toastr.success('success', '重置密码');
+            }
+        );
+    };
+
+    //重置密码
+    $('#xxim_setNewPwd').on('click', function () {
+        setNewPwd();
+    });
 
 }(window);
 

@@ -99,7 +99,7 @@ public class IMService {
     }
 
     protected void suspendUser(String username) {
-        if (userOnline.containsKey("username")) {
+        if (userOnline.containsKey(username)) {
             sendMessage(new MessageBean(
                     null,
                     username,
@@ -107,13 +107,14 @@ public class IMService {
                     new Date(),
                     MessageType.NOTIFICATION,
                     "you are suspended"
-            )).subscribe();
-            logout(userOnline.get(username)).subscribe();
+            )).subscribe(ignore ->
+                    logout(userOnline.get(username)).subscribe());
         }
+
     }
 
     protected void deleteUser(String username) {
-        if (userOnline.containsKey("username")) {
+        if (userOnline.containsKey(username)) {
             sendMessage(new MessageBean(
                     null,
                     username,
@@ -134,7 +135,7 @@ public class IMService {
         if (groupSuspendedStatus.containsKey(group))
             return Observable.just(groupSuspendedStatus.get(group));
 
-        return rxRedis.hexists("group:" + group, "isSUspended")
+        return rxRedis.hexists("group:" + group, "isSuspended")
                 .doOnNext(isSupended -> groupSuspendedStatus.put(group, isSupended));
     }
 
@@ -159,7 +160,10 @@ public class IMService {
     }
 
     public Observable<String> getKeyEncryptedBck(SocketIOClient client, String username) {
-        return rxRedis.hget("user:" + username, "keyEncryptedBck");
+        return rxRedis.exists("user:" + username)
+                .doOnNext(num -> rxAssert(num > 0, IMError.USERNAME_NOT_EXIST))
+                .flatMap(ignore -> rxRedis.hget("user:" + username, "keyEncryptedBck"))
+                .compose(RxUtils.supportNull(IMError.KEY_BCK_UNSET));
     }
 
     public Observable<String> getKeyEncrypted(SocketIOClient client, String username) {
@@ -207,8 +211,9 @@ public class IMService {
 
     public Observable<Boolean> send2GroupMember(SocketIOClient client, MessageBean bean) {
         bean.type = MessageType.GROUP_MESSAGE;
+        bean.dateTime = new Date();
         return isGroupSuspended(bean.group)
-                .doOnNext(isSuspended -> rxAssert(isSuspended, IMError.GROUP_IS_SUSPENDED))
+                .doOnNext(isSuspended -> rxAssert(!isSuspended, IMError.GROUP_IS_SUSPENDED))
                 .flatMap(ignore -> rxGetUsername(client))
                 .flatMap(myName -> Observable.zip(
                         rxRedis.sismember(bean.group + ":members", myName),
@@ -418,8 +423,7 @@ public class IMService {
                                         )
                                 ).subscribe();
 
-                            }
-                            else {
+                            } else {
                                 sendMessage(new MessageBean(
                                                 client.<String>get("username"),
                                                 bean.toUser,
@@ -428,7 +432,7 @@ public class IMService {
                                                 MessageType.REPLY_JOIN_GROUP,
                                                 bean.content
                                         )
-                                );
+                                ).subscribe();
                             }
                         }
                 );
@@ -440,9 +444,12 @@ public class IMService {
     private Observable<String> rxGetUsername(SocketIOClient client) {
         return Observable
                 .just(client.<String>get("username"))
-                .doOnNext(username -> rxAssert(
-                        userOnline.containsKey(username),
-                        IMError.UNLOGIN));
+                .doOnNext(username -> {
+                    rxAssert(
+                            username != null && userOnline.containsKey(username),
+                            IMError.UNLOGIN);
+
+                });
     }
 
     /**

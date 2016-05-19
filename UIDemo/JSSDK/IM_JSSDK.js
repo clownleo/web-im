@@ -126,7 +126,8 @@ var clientIO = function () {
         "4007": "用户未登录",
         "4008": "非法请求",
         "4009": "用户被封禁",
-        "4010": "群组被封禁"
+        "4010": "群组被封禁",
+        "4011": "尚未设置密保"
     };
 
     var IMEVENT = {
@@ -134,7 +135,7 @@ var clientIO = function () {
         LOGOUT: "logout",
         REGISTER: "register",
         GET_KET_ENCRYPTED: "get key encrypted",
-        GET_KET_ENCRYPTED_bck: "get key encrypted bck",
+        GET_KET_ENCRYPTED_BCK: "get key encrypted bck",
         MSG_SYNC: "msg_sync",
         NEW_STAMP: "new stamp",
         SET_KEY_BCK: "set key bck",
@@ -276,7 +277,7 @@ var clientIO = function () {
             function (enk, stamp) {
                 var key = CryptoJS.decryptAES4Java(enk, inputUser.pwd);
                 var key_sign = SHA256(key);
-                var key_encrypted_bck = CryptoJS.encryptAES4Java(key, inputUser.pwd_bck);
+                var key_encrypted_bck = CryptoJS.encryptAES4Java(key, SHA256(inputUser.pwd_bck));
                 var encryptStamp = CryptoJS.encryptAES4Java(stamp, key_sign);
                 return {username: inputUser.username, key_encrypted_bck: key_encrypted_bck, signature: encryptStamp};
             }
@@ -293,10 +294,10 @@ var clientIO = function () {
     };
     var setNewPwd = function (inputUser) {
         return Rx.Observable.zip(
-            client.rxEmit(IMEVENT.GET_KET_ENCRYPTED_bck, inputUser.username),
+            client.rxEmit(IMEVENT.GET_KET_ENCRYPTED_BCK, inputUser.username),
             newStamp(),
             function (enKeyBck, stamp) {
-                var key = CryptoJS.decryptAES4Java(enKeyBck, inputUser.pwd_bck);
+                var key = CryptoJS.decryptAES4Java(enKeyBck, SHA256(inputUser.pwd_bck));
                 var key_sign = SHA256(key);
                 var key_encrypted = CryptoJS.encryptAES4Java(key, inputUser.newPwd);
                 var encryptStamp = CryptoJS.encryptAES4Java(stamp, key_sign);
@@ -386,6 +387,7 @@ var clientIO = function () {
             .rxOn(IMEVENT.MSG_SYNC)
             .flatMap(function (message) {
                 switch (message.type) {
+                    case messageType.GROUP_MESSAGE:
                     case messageType.FRIEND_MESSAGE:
                         return decryptMessage(message);
                     default :
@@ -394,8 +396,15 @@ var clientIO = function () {
             }) );
     };
 
+    var gettingFriends;
+    var Friends = {}
     var getFriendsList = function () {
-        return client.rxEmit(IMEVENT.GET_FRIENDS);
+        if(Friends)
+            return Rx.Observable.just(Friends);
+
+        if(gettingFriends)
+            return gettingFriends;
+        return gettingFriends = client.rxEmit(IMEVENT.GET_FRIENDS);
     };
 
     var addGroup = function (group) {

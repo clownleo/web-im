@@ -1,65 +1,202 @@
-
 <!doctype html>
 <html>
 <head>
-<meta charset="utf-8"/>
-<title>layui WebIM 1.0beta Demo</title>
+    <meta charset="utf-8"/>
+    <title>layui WebIM 1.0beta Demo</title>
 </head>
 <link href="css/layim.css" type="text/css" rel="stylesheet"/>
 <link href="css/bootstrap.min.css" type="text/css" rel="stylesheet"/>
 <link href="css/toastr.css" type="text/css" rel="stylesheet">
 <body>
-    <div id="login" style="align-content: center;margin: 20px auto;width: 300px">
-        <h2>登&nbsp;&nbsp;录</h2>
-        <label>用户名：</label><input id="login_username" type="text" style="margin: 10px auto;"><br/>
-        <label>密&nbsp;&nbsp;&nbsp;&nbsp;码：</label><input id="login_pwd" type="password"><br/>
-        <div style="width: 260px;height: 45px;">
-            <button style="margin: 20px auto;">登&nbsp;&nbsp;录</button>
-            <a href="javascript:void(0);" style="float: right;margin: 30px auto;font-size: 13px;text-decoration: none;color: gray;">去注册</a>
-        </div>
+<div id="login" style="align-content: center;margin: 20px auto;width: 350px">
+    <h2>登&nbsp;&nbsp;录</h2>
+    <label>用户名：&nbsp;</label><input id="login_username" type="text" style="margin: 10px auto;"><br/>
+    <label>密&nbsp;&nbsp;&nbsp;&nbsp;码：</label>
+        <input id="login_pwd" type="password">
+        <a href="#set_new_pwd"  data-toggle="modal" style="font-size: 13px;text-decoration: none;color: gray;">忘记密码？</a>
+    <br/>
+
+    <div style="width: 260px;height: 45px;">
+        <button style="margin: 20px auto;">登&nbsp;&nbsp;录</button>
+        <a id="go_to_register" href="javascript:void(0);"
+           style="float: right;margin: 30px auto;font-size: 13px;text-decoration: none;color: gray;">去注册</a>
     </div>
-    <div id="register" style="align-content: center;margin: 20px auto;width: 300px;">
-        <h2>注&nbsp;&nbsp;册</h2>
-        <label>用户名：</label><input id="register_username" type="text" style="margin: 10px auto;"><br/>
-        <label>密&nbsp;&nbsp;&nbsp;&nbsp;码：</label><input id="register_pwd" type="password"><br/>
-        <div style="width: 260px;height: 45px;">
-            <button style="margin: 20px auto;">注&nbsp;&nbsp;册</button>
-            <a href="javascript:void(0);" style="float: right;margin: 30px auto;font-size: 13px;text-decoration: none;color: gray;">去登录</a>
-        </div>
+</div>
+<div id="register" style="align-content: center;margin: 20px auto;width: 300px;">
+    <h2>注&nbsp;&nbsp;册</h2>
+    <label>用户名：</label><input id="register_username" type="text" style="margin: 10px auto;"><br/>
+    <label>密&nbsp;&nbsp;&nbsp;&nbsp;码：</label><input id="register_pwd" type="password"><br/>
+
+    <div style="width: 260px;height: 45px;">
+        <button style="margin: 20px auto;">注&nbsp;&nbsp;册</button>
+        <a href="javascript:void(0);"
+           style="float: right;margin: 30px auto;font-size: 13px;text-decoration: none;color: gray;">去登录</a>
     </div>
-    <div class="modal fade" id="myModal" tabindex="-1" role="dialog"
-         aria-labelledby="myModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button type="button" class="close"
-                            data-dismiss="modal" aria-hidden="true">
-                        &times;
-                    </button>
-                    <h4 class="modal-title" id="myModalLabel">
-                        添加好友/群组
-                    </h4>
-                </div>
-                <div class="modal-body">
-                    <label>类别：</label>
-                    <input checked="checked" type="radio" name="addType" value="friend">添加好友
-                    <input type="radio" name="addType" value="group">添加群组<br/>
-                    <label>标识：</label><input id="addName" type="text" style="margin: 10px auto;"><br/>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-default"
-                            data-dismiss="modal">关闭
-                    </button>
-                    <button id="applyAdd" type="button" class="btn btn-primary">
-                        申请添加
-                    </button>
-                </div>
-            </div><!-- /.modal-content -->
+</div>
+<div class="modal fade" id="myModal" tabindex="-1" role="dialog"
+     aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close"
+                        data-dismiss="modal" aria-hidden="true">
+                    &times;
+                </button>
+                <h4 class="modal-title" id="myModalLabel">
+                    添加好友/群组
+                </h4>
+            </div>
+            <div class="modal-body">
+                <label>类别：</label>
+                <from>
+                    <input type="radio" name="addType" value="friend">添加好友
+                    <input type="radio" name="addType" value="group">添加群组
+                </from>
+                <br/>
+                <label>标识：</label><input id="addName" type="text" style="margin: 10px auto;"><br/>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default modal_closs"
+                        data-dismiss="modal">关闭
+                </button>
+                <button id="applyAdd" type="button" class="btn btn-primary">
+                    申请添加
+                </button>
+            </div>
         </div>
+        <!-- /.modal-content -->
     </div>
+</div>
+<div class="modal fade" id="createGroup" tabindex="-1" role="dialog"
+     aria-labelledby="createGroupLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close"
+                        data-dismiss="modal" aria-hidden="true">
+                    &times;
+                </button>
+                <h4 class="modal-title" id="createGroupLabel">
+                    创建群组
+                </h4>
+            </div>
+            <div class="modal-body">
+                <label>标识：</label><input id="createGroupName" type="text" style="margin: 10px auto;"><br/>
+                <label>描述：</label><input id="createGroupInfo" type="text" style="margin: 10px auto;"><br/>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default modal_closs"
+                        data-dismiss="modal">关闭
+                </button>
+                <button id="xxim_createGroup" type="button" class="btn btn-primary">
+                    创建
+                </button>
+            </div>
+        </div>
+        <!-- /.modal-content -->
+    </div>
+</div>
+<div class="modal fade" id="set_key_bck" tabindex="-1" role="dialog"
+     aria-labelledby="setKeyBckLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close"
+                        data-dismiss="modal" aria-hidden="true">
+                    &times;
+                </button>
+                <h4 class="modal-title" id="setKeyBckLabel">
+                    设置密保
+                </h4>
+            </div>
+            <div class="modal-body">
+                <div class="row-fluid">
+                    <label>账&nbsp;&nbsp;&nbsp;户&nbsp;&nbsp;&nbsp;密&nbsp;&nbsp;&nbsp;码&nbsp;：</label>
+                    <input type="password" id="pwd"/><br/></div>
+                <div class="row-fluid">
+                    <label>第一个密保问题：</label>
+                    <select class="question">
+                    </select>
+                    <input type="text">
+                </div>
+                <div class="row-fluid">
+                    <label>第二个密保问题：</label>
+                    <select class="question">
+                    </select>
+                    <input type="text">
+                </div>
+                <div class="row-fluid">
+                    <label>第三个密保问题：</label>
+                    <select class="question">
+                    </select>
+                    <input type="text">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default modal_closs"
+                        data-dismiss="modal">关闭
+                </button>
+                <button id="xxim_setKeyBck" type="button" class="btn btn-primary">
+                    设置
+                </button>
+            </div>
+        </div>
+        <!-- /.modal-content -->
+    </div>
+</div>
+<div class="modal fade" id="set_new_pwd" tabindex="-1" role="dialog"
+     aria-labelledby="setNewPwdLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close"
+                        data-dismiss="modal" aria-hidden="true">
+                    &times;
+                </button>
+                <h4 class="modal-title" id="setNewPwdLabel">
+                    重置密码
+                </h4>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <label class="col-md-3 ">用户名：</label>
+                    <input class="col-md-6" type="text" id="username" style="width: 315px;"/><br/></div>
+                <div class="row">
+                    <label class="col-md-3">第一个密保问题：</label>
+                    <select class="question col-md-3" title="第一个密保问题">
+                    </select><label>:</label>
+                    <input type="text" class="col-md-3" />
+                </div>
+                <div class="row">
+                    <label class="col-md-3">第二个密保问题：</label>
+                    <select class="question col-md-3" title="第二个密保问题">
+                    </select><label>:</label>
+                    <input type="text" class="col-md-3" />
+                </div>
+                <div class="row">
+                    <label class="col-md-3">第三个密保问题：</label>
+                    <select class="question col-md-3" title="第三个密保问题">
+                    </select><label>:</label>
+                    <input type="text" class="col-md-3"/>
+                </div>
+                <div class="row">
+                    <label class="col-md-3">设置新密码：</label>
+                    <input class="col-md-6" type="password" id="new_pwd" style="width: 315px;"/><br/></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default modal_closs"
+                        data-dismiss="modal">关闭
+                </button>
+                <button id="xxim_setNewPwd" type="button" class="btn btn-primary">
+                    重置密码
+                </button>
+            </div>
+        </div>
+        <!-- /.modal-content -->
+    </div>
+</div>
 <script src="lay/lib.js"></script>
 <script src="lay/layer/layer.min.js"></script>
-<!--<script type="text/javascript" src="JSSDK/jquery.min.js"></script>-->
 <script type="text/javascript" src="bootstrap.min.js"></script>
 <script type="text/javascript" src="toastr.js"></script>
 <script type="text/javascript" src="JSSDK/rx.all.js"></script>

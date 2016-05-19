@@ -20,7 +20,8 @@ public class IMError extends RuntimeException {
             UNLOGIN = new IMError(4007, "user unlogin"),
             INVALIDATE_REQUEST = new IMError(4008, "invalidate request"),
             USER_IS_SUSPENDED = new IMError(4009, "user is suspended"),
-            GROUP_IS_SUSPENDED = new IMError(4010, "group is suspended");
+            GROUP_IS_SUSPENDED = new IMError(4010, "group is suspended"),
+            KEY_BCK_UNSET = new IMError(4011, "key bck unset");
     private static Map<Integer, IMError> code2message;
 
     private static Map<Integer, IMError> getCode2message() {
