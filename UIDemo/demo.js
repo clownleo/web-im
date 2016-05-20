@@ -908,6 +908,7 @@
                                     toastr.options.extendedTimeOut = 0;
                                     var replyJoinGroupUI = $('<div>').addClass('row-fluid').text('“' + msg.from_user + '”回复您的入群申请：' + msg.content);
                                     toastr.jqToastr('info', replyJoinGroupUI, '申请加入' + msg.group + '群组的回复');
+                                    xxim.getDates(1);
                                     break;
                                 case client.messageType.DELETE_FRIEND:
                                     xxim.getDates(0);
