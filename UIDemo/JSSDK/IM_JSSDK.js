@@ -30,10 +30,10 @@ var utils = {
     logger: function () {
         console.log.apply(console, Array.prototype.slice(arguments, 0));
     },
-    date: function(){
+    date: function () {
         var date = new Date();
-        var dateStr = date.getFullYear() + "-" + (date.getMonth()+1) + "-" + date.getDate();
-        dateStr += " " + date.getHours() + ":" + date.getMinutes() +  ":" + date.getSeconds();
+        var dateStr = date.getFullYear() + "-" + (date.getMonth() + 1) + "-" + date.getDate();
+        dateStr += " " + date.getHours() + ":" + date.getMinutes() + ":" + date.getSeconds();
         return dateStr;
     }
 };
@@ -75,8 +75,8 @@ var utils = {
 
             return eventListening[event] = Rx.Observable.create(function (subscriber) {
                 client.on(event, function (data, ack) {
-                    console.log('event:');
-                    console.log(data);
+                    //console.log('event:');
+                    //console.log(data);
                     subscriber.onNext(data);
                     ack();
                 });
@@ -91,7 +91,8 @@ var utils = {
 
 var clientIO = function () {
     var client = io("ws://localhost:9090", {
-        rememberUpgrade: true
+        rememberUpgrade: true,
+        transports : ['websocket']
     });
     var userPrivateKey;
     var userRSA;
@@ -201,7 +202,7 @@ var clientIO = function () {
         }
         return client.rxEmit(IMEVENT.GET_PUBLIC_KEY, username)
             .map(function (key) {
-                key = CryptoJS.decryptAES4Java(key , userKeySign);
+                key = CryptoJS.decryptAES4Java(key, userKeySign);
                 return publicKeyArr[username] = key;
             });
     };
@@ -330,7 +331,7 @@ var clientIO = function () {
     };
 
     var replyAddFriend = function (message) {
-        if(message.content == "YES")
+        if (message.content == "YES")
             friends = null;
         return client.rxEmit(IMEVENT.REPLY_OF_ADD_FRIEND, message)
             .doOnNext(function () {
@@ -344,7 +345,7 @@ var clientIO = function () {
                 message.content = CryptoJS.encryptAES4Java(message.content, chatKey);
                 return client.rxEmit(IMEVENT.SEND_TO_FRIEND, message)
                     .doOnNext(function () {
-                        console.log("send success");
+                        //console.log("send success");
                     })
             })
     };
@@ -367,7 +368,7 @@ var clientIO = function () {
                 tempMessage.content = CryptoJS.encryptAES4Java(message.content, bean.chatKey);
                 return client.rxEmit(IMEVENT.SEND_TO_GROUP_MEMBER, tempMessage);
             })
-            .doOnNext(function(){
+            .doOnNext(function () {
                 console.log("send success");
             });
     };
@@ -375,9 +376,12 @@ var clientIO = function () {
     var decryptMessage = function (message) {
         return getChatKey(message.from_user)
             .map(function (chatKey) {
-                message = utils.clone(message);
+                //message = utils.clone(message);
+                if(message.isDecrypted)
+                    return message;
                 message.content = CryptoJS.decryptAES4Java(message.content, chatKey);
-                return message;
+                message.isDecrypted = true;
+                return utils.clone(message);
             })
     };
 
@@ -385,40 +389,42 @@ var clientIO = function () {
     var msgStream;
     var onMsg = function () {
         return msgStream || (msgStream = client
-            .rxOn(IMEVENT.MSG_SYNC)
-            .flatMap(function (message) {
-                switch (message.type) {
-                    case messageType.GROUP_MESSAGE:
-                    case messageType.FRIEND_MESSAGE:
-                        return decryptMessage(message);
-                    default :
-                        return Rx.Observable.just(message);
-                }
-            }) );
+                    .rxOn(IMEVENT.MSG_SYNC)
+                    .flatMap(function (message) {
+                        switch (message.type) {
+                            case messageType.GROUP_MESSAGE:
+                            case messageType.FRIEND_MESSAGE:
+                                return decryptMessage(message);
+                            default :
+                                return Rx.Observable.just(message);
+                        }
+                    })
+                    .doOnError(() => msgStream = null)
+            );
     };
 
 
     var gettingFriends;
     var friends;
     onMsg()
-        .subscribe(function(message){
+        .subscribe(function (message) {
             switch (message.type) {
                 case messageType.REPLY_ADD_FRIEND:
-                    if(message.content == "YES") friends = null;
+                    if (message.content == "YES") friends = null;
                     break;
                 case messageType.REPLY_JOIN_GROUP:
-                    if(message.content == "YES") delete memberListsOfGroups[message.group];
+                    if (message.content == "YES") delete memberListsOfGroups[message.group];
             }
         });
 
     var getFriendsList = function () {
-        if(friends)
+        if (friends)
             return Rx.Observable.just(friends);
 
-        if(gettingFriends)
+        if (gettingFriends)
             return gettingFriends;
-        return gettingFriends = client.rxEmit(IMEVENT.GET_FRIENDS).doOnNext(function($friends){
-            friends=$friends;
+        return gettingFriends = client.rxEmit(IMEVENT.GET_FRIENDS).doOnNext(function ($friends) {
+            friends = $friends;
             delete gettingFriends;
         });
     };
@@ -437,17 +443,17 @@ var clientIO = function () {
 
     var gettingMembersOfGroup = {};
     var getMembersOfGroup = function (groupName) {
-        if(memberListsOfGroups[groupName])
+        if (memberListsOfGroups[groupName])
             return Rx.Observable.just(memberListsOfGroups[groupName]);
 
-        if(gettingMembersOfGroup[groupName])
+        if (gettingMembersOfGroup[groupName])
             return gettingMembersOfGroup[groupName];
 
         console.log("membersListsOfGroups cache empty!");
         return gettingMembersOfGroup[groupName] = client
             .rxEmit(IMEVENT.GET_GROUP_MEMBERS, groupName)
-            .doOnNext(function(list){
-                memberListsOfGroups[groupName]=list;
+            .doOnNext(function (list) {
+                memberListsOfGroups[groupName] = list;
                 delete gettingMembersOfGroup[groupName];
             });
     };

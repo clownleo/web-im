@@ -204,6 +204,7 @@ public class IMService {
         bean.dateTime = new Date();
         bean.type = MessageType.FRIEND_MESSAGE;
         return rxGetUsername(client)
+                .doOnNext(myName -> bean.fromUser = myName)
                 .flatMap(username -> rxRedis.sismember(username + ":friends", bean.toUser))
                 .doOnNext(isMem -> rxAssert(isMem, IMError.INVALIDATE_REQUEST))
                 .flatMap(ignore -> sendMessage(bean));
@@ -215,6 +216,7 @@ public class IMService {
         return isGroupSuspended(bean.group)
                 .doOnNext(isSuspended -> rxAssert(!isSuspended, IMError.GROUP_IS_SUSPENDED))
                 .flatMap(ignore -> rxGetUsername(client))
+                .doOnNext(myName -> bean.fromUser = myName)
                 .flatMap(myName -> Observable.zip(
                         rxRedis.sismember(bean.group + ":members", myName),
                         rxRedis.sismember(bean.group + ":members", bean.toUser),
