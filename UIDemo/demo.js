@@ -314,6 +314,7 @@
     xxim.createGroup = function (id, info) {
         client.addGroup({groupName: id, info: info}).subscribe(
             function () {
+                xxim.getDates(1);
                 toastr.success('create group success');
             }, function (result) {
                 toastr.error('create group error:' + client.IMError[result.code]);
@@ -863,6 +864,7 @@
                                                         content: 'YES'
                                                     }).subscribe();
                                                     xxim.getDates(0);
+                                                    friendMsgHandler[msg.from_user] = defaultFriendMsgHandler;
 
                                                 })
                                             )
@@ -871,6 +873,7 @@
                                     break;
                                 case client.messageType.REPLY_ADD_FRIEND:
                                     xxim.getDates(0);
+                                    friendMsgHandler[msg.from_user] = defaultFriendMsgHandler;
                                     toastr.options.timeOut = 0;
                                     toastr.options.extendedTimeOut = 0;
                                     var replyAddGriendUI = $('<div>').addClass('row-fluid').text('“' + msg.from_user + '”回复您的好友申请：' + msg.content);
@@ -895,7 +898,8 @@
                                                         group: msg.group,
                                                         to_user: msg.from_user,
                                                         content: 'YES'
-                                                    }).subscribe();
+                                                    }).subscribe(ignore =>
+                                                        xxim.getGroups({type: 'group', id: msg.group}));
 
                                                 })
                                             )
@@ -904,6 +908,8 @@
                                     break;
                                 case client.messageType.REPLY_JOIN_GROUP:
                                     xxim.getGroups({type: 'group', id: msg.group});
+                                    xxim.getDates(1);
+                                    groupMsgHandler[msg.group] = defaultGroupMsgHandler;
                                     toastr.options.timeOut = 0;
                                     toastr.options.extendedTimeOut = 0;
                                     var replyJoinGroupUI = $('<div>').addClass('row-fluid').text('“' + msg.from_user + '”回复您的入群申请：' + msg.content);
@@ -940,6 +946,7 @@
 
     //请求群员
     xxim.getGroups = function (param) {
+        if(!xxim.chatbox) return;
         var keys = param.type + param.id, str = '',
             groupss = xxim.chatbox.find('#layim_group' + keys);
         if (!groupss)
