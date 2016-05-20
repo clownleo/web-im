@@ -253,12 +253,16 @@ var clientIO = function () {
             client.rxEmit(IMEVENT.GET_KET_ENCRYPTED, inputUser.username),
             newStamp(),
             function (enk, stamp) {
-                var key = CryptoJS.decryptAES4Java(enk, inputUser.pwd);
-                var key_sign = SHA256(key);
-                userPrivateKey = key;
-                userKeySign = key_sign;
-                userRSA = cryptico.generateRSAKey(userPrivateKey, 1024);
-                return CryptoJS.encryptAES4Java(stamp, key_sign);
+                try{
+                    var key = CryptoJS.decryptAES4Java(enk, inputUser.pwd);
+                    var key_sign = SHA256(key);
+                    userPrivateKey = key;
+                    userKeySign = key_sign;
+                    userRSA = cryptico.generateRSAKey(userPrivateKey, 1024);
+                    return CryptoJS.encryptAES4Java(stamp, key_sign);
+                }catch(e){
+                    throw {code:4005};
+                }
             }
         )
             .flatMap(function (x) {

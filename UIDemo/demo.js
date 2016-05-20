@@ -934,7 +934,7 @@
 
                 },
                 function (result) {
-                    alert(client.IMError[result.code]);
+                    toastr.error(client.IMError[result.code] , '登录');
                 }
             );
         });
