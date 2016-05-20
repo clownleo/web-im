@@ -908,7 +908,6 @@
                                     break;
                                 case client.messageType.REPLY_JOIN_GROUP:
                                     xxim.getGroups({type: 'group', id: msg.group});
-                                    xxim.getDates(1);
                                     groupMsgHandler[msg.group] = defaultGroupMsgHandler;
                                     toastr.options.timeOut = 0;
                                     toastr.options.extendedTimeOut = 0;
